@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered stock signal calculator for Indonesia Stock Exchange using momentum, mean reversion, volume pressure, and volatility models.">
+    <title>AI Stock Signal Tool Indonesia | IDX Trading Signal</title>
+    
+    <!-- Structured Data untuk SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "AI Stock Signal Tool Indonesia",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "description": "AI-powered stock signal calculator for Indonesia Stock Exchange using momentum, mean reversion, volume pressure, and volatility models.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IDR"
+      }
+    }
+    </script>
+
+    <style>
+        /* CSS Variables */
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --buy-color: #16a34a; /* Hijau */
+            --buy-bg: #dcfce7;
+            --sell-color: #dc2626; /* Merah */
+            --sell-bg: #fee2e2;
+            --hold-color: #ca8a04; /* Kuning */
+            --hold-bg: #fef08a;
+        }
+
+        /* Basic Resets */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        /* Header Layout */
+        header {
+            background-color: var(--card-bg);
+            padding: 2.5rem 1rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .seo-description {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 1rem auto 0;
+        }
+
+        /* Main Content Layout */
+        main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        article {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        section {
+            margin-bottom: 2rem;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        /* Input Form Layout */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+
+        input {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-submit {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 2rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Error Message Display */
+        .error-message {
+            color: var(--sell-color);
+            background-color: var(--sell-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            display: none;
+            font-weight: 500;
+            border: 1px solid #f87171;
+        }
+
+        /* Results Display */
+        .results {
+            margin-top: 3rem;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .result-card {
+            background-color: var(--bg-color);
+            padding: 1.25rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .result-card .label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .result-card .value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Final Signal Styling */
+        .final-signal {
+            text-align: center;
+            padding: 2.5rem;
+            border-radius: 12px;
+            border: 2px dashed var(--border-color);
+            margin-top: 1rem;
+            background-color: var(--bg-color);
+        }
+
+        .signal-score {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .signal-score span {
+            font-weight: 800;
+            font-size: 1.6rem;
+            color: var(--text-main);
+            margin-left: 0.5rem;
+        }
+
+        .signal-text {
+            font-size: 3rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 1rem 3rem;
+            border-radius: 8px;
+            display: inline-block;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .signal-buy {
+            color: var(--buy-color);
+            background-color: var(--buy-bg);
+            border: 2px solid var(--buy-color);
+        }
+
+        .signal-sell {
+            color: var(--sell-color);
+            background-color: var(--sell-bg);
+            border: 2px solid var(--sell-color);
+        }
+
+        .signal-hold {
+            color: var(--hold-color);
+            background-color: var(--hold-bg);
+            border: 2px solid var(--hold-color);
+        }
+
+        footer {
+            margin-top: 4rem;
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>AI Stock Signal Tool Indonesia</h1>
+        <h2>Analisis Sinyal Saham Berbasis Model Statistik</h2>
+        <p class="seo-description">AI-powered stock signal calculator for Indonesia Stock Exchange using momentum, mean reversion, volume pressure, and volatility models.</p>
+    </header>
+
+    <main>
+        <article>
+            <section>
+                <h3>Input Data Pasar</h3>
+                <div id="errorMessage" class="error-message"></div>
+                
+                <form id="signalForm">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="pt">Harga sekarang (Pt)</label>
+                            <input type="number" id="pt" step="any" required placeholder="Contoh: 1550">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="pt_n">Harga n hari lalu (Pt_n)</label>
+                            <input type="number" id="pt_n" step="any" required placeholder="Contoh: 1500">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="mu">Moving average n periode (mu)</label>
+                            <input type="number" id="mu" step="any" required placeholder="Contoh: 1520">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="sigma">Standar deviasi harga (sigma)</label>
+                            <input type="number" id="sigma" step="any" required placeholder="Contoh: 30">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="vt">Volume hari ini (Vt)</label>
+                            <input type="number" id="vt" step="any" required placeholder="Contoh: 2500000">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="vavg">Volume rata-rata (Vavg)</label>
+                            <input type="number" id="vavg" step="any" required placeholder="Contoh: 2000000">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="pt_prev">Harga penutupan sebelumnya (Pt_prev)</label>
+                            <input type="number" id="pt_prev" step="any" required placeholder="Contoh: 1530">
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn-submit" id="calculateBtn">Hitung Sinyal Trading</button>
+                </form>
+            </section>
+
+            <section id="resultsSection" class="results">
+                <h3>Hasil Analisis Indikator</h3>
+                
+                <div class="result-grid">
+                    <div class="result-card">
+                        <div class="label">Momentum (M)</div>
+                        <div class="value" id="resM">-</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">Z-score (Z)</div>
+                        <div class="value" id="resZ">-</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">Volume Pressure (VP)</div>
+                        <div class="value" id="resVP">-</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">Log Return (r)</div>
+                        <div class="value" id="resR">-</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">Volatility (sigma_vol)</div>
+                        <div class="value" id="resVol">-</div>
+                    </div>
+                </div>
+
+                <div class="final-signal">
+                    <div class="signal-score">Final Score 📉 <span id="resScore">-</span></div>
+                    <div class="signal-text" id="resSignal">-</div>
+                </div>
+            </section>
+        </article>
+    </main>
+
+    <footer>
+        <p><strong>Disclaimer:</strong> Sinyal yang dihasilkan adalah indikasi statistik dan bukan rekomendasi investasi. Tools riset kuantitatif pasar saham ini ditujukan untuk pendidikan dan analisis mandiri.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const calculateBtn = document.getElementById('calculateBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const resultsSection = document.getElementById('resultsSection');
+            
+            // Output Elements
+            const resM = document.getElementById('resM');
+            const resZ = document.getElementById('resZ');
+            const resVP = document.getElementById('resVP');
+            const resR = document.getElementById('resR');
+            const resVol = document.getElementById('resVol');
+            const resScore = document.getElementById('resScore');
+            const resSignal = document.getElementById('resSignal');
+
+            calculateBtn.addEventListener('click', () => {
+                // Reset errors and hide results on new calculation
+                errorMessage.style.display = 'none';
+                resultsSection.style.display = 'none';
+                
+                // Binding Inputs
+                const pt = parseFloat(document.getElementById('pt').value);
+                const pt_n = parseFloat(document.getElementById('pt_n').value);
+                const mu = parseFloat(document.getElementById('mu').value);
+                const sigma = parseFloat(document.getElementById('sigma').value);
+                const vt = parseFloat(document.getElementById('vt').value);
+                const vavg = parseFloat(document.getElementById('vavg').value);
+                const pt_prev = parseFloat(document.getElementById('pt_prev').value);
+
+                // Validasi data input: Pastikan semua angka valid, tidak kosong, tidak NaN
+                const inputs = [pt, pt_n, mu, sigma, vt, vavg, pt_prev];
+                if (inputs.some(val => isNaN(val))) {
+                    displayError("Harap isi semua kolom dengan angka yang valid.");
+                    return;
+                }
+
+                try {
+                    // 1. Momentum (M) = (Pt - Pt_n) / Pt_n
+                    // Proteksi pembagian nol
+                    let M = 0;
+                    if (pt_n !== 0) {
+                        M = (pt - pt_n) / pt_n;
+                    }
+
+                    // 2. Mean Reversion / Z-Score (Z) = (Pt - mu) / sigma
+                    // Proteksi pembagian nol
+                    let Z = 0;
+                    if (sigma !== 0) {
+                        Z = (pt - mu) / sigma;
+                    }
+
+                    // 3. Volume Pressure (VP) = Vt / Vavg
+                    // Proteksi pembagian nol
+                    let VP = 0;
+                    if (vavg !== 0) {
+                        VP = vt / vavg;
+                    }
+
+                    // 4. Log Return (r) = ln(Pt / Pt_prev)
+                    // Proteksi nilai nol dan negatif pada ln()
+                    let r = 0;
+                    if (pt_prev !== 0) {
+                        const ratio = pt / pt_prev;
+                        if (ratio > 0) {
+                            r = Math.log(ratio);
+                        } else {
+                            displayError("Error kalkulasi: Harga sekarang dan sebelumnya menghasilkan rasio negatif/nol (Log Return).");
+                            return;
+                        }
+                    }
+
+                    // 5. Volatility Estimation (sigma_vol) = abs(r)
+                    const sigma_vol = Math.abs(r);
+
+                    // 6. Signal Scoring Engine
+                    // Score = (0.35 * M) + (0.35 * (-Z)) + (0.20 * VP) - (0.10 * sigma_vol)
+                    const score = (0.35 * M) + (0.35 * (-Z)) + (0.20 * VP) - (0.10 * sigma_vol);
+
+                    // 7. Interpretasi Sinyal
+                    let signalTextStr = "HOLD";
+                    let signalClassStr = "signal-hold";
+
+                    if (score > 0.5) {
+                        signalTextStr = "BUY";
+                        signalClassStr = "signal-buy";
+                    } else if (score < -0.5) {
+                        signalTextStr = "SELL";
+                        signalClassStr = "signal-sell";
+                    }
+
+                    // Menampilkan hasil pada UI
+                    resM.textContent = M.toFixed(4);
+                    resZ.textContent = Z.toFixed(4);
+                    resVP.textContent = VP.toFixed(4);
+                    resR.textContent = r.toFixed(4);
+                    resVol.textContent = sigma_vol.toFixed(4);
+                    resScore.textContent = score.toFixed(4);
+                    
+                    resSignal.textContent = signalTextStr;
+                    resSignal.className = "signal-text " + signalClassStr;
+
+                    // Tampilkan section hasil
+                    resultsSection.style.display = 'block';
+                    
+                    // Gulir halaman secara presisi ke hasil yang baru muncul
+                    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                } catch (error) {
+                    displayError("Terjadi System Error: " + error.message);
+                }
+            });
+
+            // Helper function to display error messages clearly to the user
+            function displayError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
