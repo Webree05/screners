@@ -192,12 +192,29 @@
                         let formattedData = [];
                         for (let i = 0; i < timestamps.length; i++) {
                             if (quote.close[i] !== null) {
-                                formattedData.push({ time: timestamps[i], open: quote.open[i], high: quote.high[i], low: quote.low[i], close: quote.close[i] });
+                                let t = timestamps[i];
+                                // Normalisasi timestamp harian/bulanan agar tidak mencetak rentetan candle fake ke kanan
+                                if (timeframe === '1D' || timeframe === '1Mo') {
+                                    const d = new Date(t * 1000);
+                                    t = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                                }
+                                formattedData.push({ time: t, open: quote.open[i], high: quote.high[i], low: quote.low[i], close: quote.close[i] });
                             }
                         }
-                        const uniqueData = []; let lastTime = 0;
+                        
+                        const uniqueData = []; 
+                        const mapTime = {};
                         for (let d of formattedData) {
-                            if (d.time > lastTime) { uniqueData.push(d); lastTime = d.time; }
+                            if (!mapTime[d.time]) {
+                                mapTime[d.time] = { ...d };
+                                uniqueData.push(mapTime[d.time]);
+                            } else {
+                                // Timpa data existing agar intraday ticks di-update di candle yang sama
+                                const exist = mapTime[d.time];
+                                exist.high = Math.max(exist.high, d.high);
+                                exist.low = Math.min(exist.low, d.low);
+                                exist.close = d.close;
+                            }
                         }
                         return uniqueData;
                     } catch (e) { return []; }
@@ -346,13 +363,17 @@
             "FINANCE": ["BBCA", "BMRI", "BBNI", "BBRI", "ARTO", "BRIS", "PNLF", "BDMN", "BNGA", "NISP", "BBTN", "BBYB", "AGRO", "BBHI", "MEGA", "PNBN", "MAYA", "BJBR", "BJTM", "BSIM", "BBKP", "MCOR", "BINA", "BACA", "BVIC", "AGRS", "DNAR", "NOBU", "BKSW", "BGTG", "BPFI", "BFIN", "CFIN", "CLIP", "MFIN", "TIFA", "VVIC", "SMCB", "TRIM", "YULE", "RELI", "LPGI", "AMAG", "ASBI", "ASRM", "AHAP"],
             "CYCLICAL": ["MAPA", "MAPI", "ACES", "MSIN", "SCMA", "LPPF", "RALS", "ERAA", "CSAP", "GLOB", "HOME", "KOIN", "SONA", "DSFI", "PTSP", "GZCO", "WAPO", "FAST", "PZZA", "CLEO", "MINA", "PSDN", "CAMP", "PCAR", "IPAC", "JSPT", "PGLI", "SHID", "PANR", "DART", "BAYU"],
             "PROPERTY": ["CTRA", "BSDE", "PWON", "SMRA", "ASRI", "PANI", "DILD", "KIJA", "APLN", "OMRE", "BKSL", "LPCK", "LPKR", "BEST", "SSIA", "GPRA", "JRPT", "MDLN", "MMLP", "MTLA", "NIRO", "PLIN", "RODA", "MKPI", "FMII", "BAPA", "GMTD", "LCGP", "MIND", "SCBD"],
-            "NON-CYCLICAL": ["UNVR", "ICBP", "INDF", "CPIN", "MYOR", "AMRT", "MIDI", "JPFA", "CMRY", "GOOD", "CLEO", "AISA", "ALTO", "CAMP", "CEKA", "DLTA", "MLBI", "PSDN", "ROTI", "SKBM", "SKLT", "STTP", "ULTJ", "HOKI", "KEJU", "BISI", "CPRO", "DSFI", "WMUU", "PMMP", "WMPP"]
+            "NON-CYCLICAL": ["UNVR", "ICBP", "INDF", "CPIN", "MYOR", "AMRT", "MIDI", "JPFA", "CMRY", "GOOD", "CLEO", "AISA", "ALTO", "CAMP", "CEKA", "DLTA", "MLBI", "PSDN", "ROTI", "SKBM", "SKLT", "STTP", "ULTJ", "HOKI", "KEJU", "BISI", "CPRO", "DSFI", "WMUU", "PMMP", "WMPP"],
+            "JASA-KONSUMEN": ["MAPA", "MAPI", "ACES", "LPPF", "RALS", "ERAA", "SCMA", "CSAP", "PZZA", "FAST", "SHID", "PANR", "DART", "BAYU", "PGLI", "JSPT", "IPAC", "GLOB", "HOME", "KOIN"],
+            "SYARIAH": ["TLKM", "ASII", "BRIS", "ICBP", "INDF", "UNVR", "KLBF", "AKRA", "CPIN", "UNTR", "PTBA", "INCO", "MDKA", "TPIA", "BRPT", "SMGR", "INTP", "MIKA", "SILO", "HEAL", "SIDO", "PGAS", "ITMG"],
+            "DAY-TRADE": ["PANI", "BREN", "CUAN", "AMMN", "GOTO", "STRK", "AWAN", "TPIA", "BRPT", "WIFI", "DOID", "BUMI", "BRMS", "VKTR", "MUTU", "CGAS", "OASA", "PGEO", "FREN", "BBKP", "BSBK", "PSAB", "LMAX", "NATC"]
         };
 
         const API_TICKERS = [...new Set(Object.values(SECTOR_MAPPING).flat())];
 
         // Memasukkan sisa list emiten (945++ Tickers) menggunakan database nama saham valid aslinya agar sempurna tervalidasi profesional.
-        const VALID_IDX_DATABASE_STRING = "AALI,ABBA,ABDA,ABMM,ACES,ACST,ADCP,ADES,ADHI,ADMF,ADMG,ADRO,AEGS,AGAR,AGRO,AGRS,AHAP,AIMS,AISA,AKKU,AKM,AKPI,AKRA,AKSI,ALDO,ALKA,ALMI,ALTO,AMAG,AMAN,AMAR,AMFG,AMIN,AMMN,AMOR,AMPT,AMRT,ANDI,ANJT,ANTM,APEX,APII,APLI,APLN,ARCI,ARGO,ARKA,ARKO,ARNA,ARTA,ARTI,ARTO,ASBI,ASDM,ASGR,ASHA,ASII,ASJT,ASLC,ASMI,ASRI,ASRM,ASSA,ATIC,AUTO,AYLS,BABP,BACA,BAJA,BALI,BANK,BAPA,BAPI,BATA,BATO,BAYU,BBCA,BBHI,BBKP,BBLD,BBMD,BBNI,BBRI,BBRM,BBSI,BBSS,BBTN,BBYB,BCAP,BCIC,BCIP,BDMN,BEKS,BELL,BESS,BEST,BFIN,BGTG,BHAT,BHTK,BIMA,BINA,BIPI,BIPP,BIRD,BISI,BISN,BIKA,BKDP,BKSL,BKSW,BLTA,BLTZ,BMAS,BMHS,BMRI,BMSR,BMTR,BNBA,BNBR,BNGA,BNII,BNLI,BOBA,BOGA,BOSS,BPFI,BPII,BPTR,BRAM,BRIS,BRMS,BRNA,BRPT,BSBK,BSDE,BSIM,BSML,BSSR,BSWD,BTEK,BTEL,BTON,BTPN,BTPS,BUDI,BUKA,BUKK,BULL,BUMI,BVA,BVIC,BWPT,BYAN,CAKK,CAMP,CANI,CARE,CASS,CBMF,CCSI,CEKA,CENT,CFIN,CINT,CITA,CITY,CLEO,CLPI,CMNP,CMPP,CMRY,CNKO,CNTX,COAL,COCO,CPIN,CPRO,CRAB,CSAP,CSIS,CSMI,CSRA,CTBN,CTRA,CTTH,CUAN,DADA,DART,DAYA,DCII,DEAL,DEFI,DEWA,DFAM,DGIK,DGNS,DIKA,DILD,DIVA,DKFT,DLTA,DMAS,DMMX,DNAR,DOID,DPNS,DPUM,DSFI,DSNG,DSSA,DUTI,DVLA,DWGL,EAST,ECII,EDSA,EIKON,EKAD,ELJA,ELSA,ELTY,EMDE,EMTK,ENRG,ENVY,EPMT,ERAA,ERTX,ESIP,ESSA,ESTA,ETWA,EVIN,EXCL,FAST,FASW,FILM,FIMI,FIRE,FISH,FIT,FITT,FLMC,FMII,FOOD,FORZ,FPNI,FPTI,FREN,GAMA,GDST,GDYR,GEMA,GEMS,GGRM,GIAA,GJTL,GLOB,GLVA,GMCW,GMTD,GOLD,GOLL,GOOD,GOTO,GPRA,GRLN,GRPN,GSMF,GTBO,GTSI,GWSA,GYLN,HAIS,HADE,HDIT,HDTX,HEAL,HELI,HERO,HEXA,HITS,HKMU,HMSP,HOKI,HOME,HOMI,HOPE,HOTL,HRME,HRTA,HRUM,IACT,IATA,IBN,IBST,ICBP,ICON,IDPR,IFSH,IGAR,IIKP,IKAI,IKAN,IKBI,IMAS,IMJS,IMPC,INAF,INAI,INCF,INCO,INDA,INDF,INDP,INDR,INDS,INDY,INFO,INKP,INMF,INPC,INPP,INPS,INRU,INTA,INTD,INTP,IPAC,IPCC,IPCM,IPSG,IPTV,IRRA,ISA,ISAT,ISSP,ITIC,ITMA,ITMG,JAA,JAST,JAWA,JAYA,JECC,JIHD,JKON,JKSW,JMAS,JPFA,JRPT,JSPT,JTPE,KAEF,KARK,KAYU,KBAG,KBLI,KBLM,KBLV,KDSI,KEJU,KICI,KIJA,KINO,KIOS,KLBF,KMTR,KOBX,KOIN,KONI,KOPI,KOTA,KPAL,KPIG,KRAK,KRAS,KREN,KUAS,LABA,LAPD,LCGP,LCKM,LEAD,LFLO,LINK,LION,LMAS,LMPI,LMSH,LPCK,LPGI,LPIN,LPKR,LPLI,LPPF,LRN,LRNA,LSRIP,LTC,LUCK,LUX,MAGP,MAIN,MALL,MAPA,MAPI,MARD,MARK,MASA,MAYA,MBAP,MBSS,MBTO,MCAS,MCOR,MDLN,MDKA,MDRN,MEDC,MEGA,MERK,META,MFIN,MFMI,MGLV,MGNA,MGRO,MICE,MIDI,MIKA,MINA,MIND,MIRA,MITI,MKNT,MKPI,MLBI,MLIA,MLPT,MNCN,MOLI,MORA,MPMX,MPOO,MSIN,MSKY,MTDL,MTEL,MTFN,MTLA,MTPS,MTRA,MTSM,MYOH,MYOR,MYRX,MYTX,NANO,NAPS,NASA,NATO,NELY,NFCX,NICK,NICL,NIPS,NIRO,NISP,NOBU,NRCA,NSSS,NUSA,NZIA,OASA,OBMD,OCAP,OILS,OKAS,OMRE,OPMS,PADI,PALM,PAMG,PANI,PANR,PANS,PBRX,PBSA,PCAR,PDES,PEGE,PEHA,PGAS,PGJO,PGLI,PGRX,PICO,PJAA,PKPK,PLAS,PLIN,PNBN,PNBS,PNIN,PNLF,PNSE,POLA,POLI,POLL,POLU,POLY,POOL,PORT,POSA,PPRE,PRAS,PRDA,PRIM,PSAB,PSDN,PSGO,PSKT,PTBA,PTIS,PTPP,PTRO,PTSN,PTSP,PURA,PURE,PZZA,RAJA,RALS,RANC,RBMS,RDTX,REAL,RELI,RICY,RIGS,RIMO,RMBA,RMKE,RODA,ROTI,RUIS,SAFE,SAME,SAPX,SBMA,SCBD,SCCO,SCMA,SCNP,SCPI,SDMU,SDPC,SIDO,SILO,SIMA,SIMP,SINI,SITARA,SJA,SJMU,SKBM,SKLT,SKRN,SMCB,SMDM,SMDR,SMGR,SMMA,SMMT,SMRA,SMRU,SMSM,SNLK,SOCI,SONA,SOSS,SOTS,SPMA,SQMI,SRAJ,SRIL,SRSN,SSIA,SSMS,SSTK,STTP,SUGI,SULI,SUPR,SURE,SWAT,TAXI,TBIG,TBMS,TCID,TCPI,TEBE,TECH,TELE,TFCO,TGKA,TPIA,TIFA,TINS,TIRA,TIRT,TKIM,TLKM,TMAS,TMPO,TOBA,TOPS,TOTO,TOWR,TPIA,TPMA,TRAM,TRIL,TRIM,TRIN,TRIO,TRIS,TRJA,TRON,TRST,TRUS,TSPC,TUGU,TURI,UANG,UCID,UFOE,ULTJ,UNIC,UNIQ,UNIT,UNSP,UNTR,UNVR,VIVA,VOKS,VRNA,WAPO,WASK,WATA,WEGE,WEHA,WICO,WIFI,WIKA,WIM,WINS,WIRG,WMPP,WMUU,WOMF,WOOD,WOWS,WSBP,WSKT,WTON,YELO,YPAS,YULE,ZATA,ZBRA,ZINC";
+        const VALID_IDX_DATABASE_STRING = "AADI,AALI,ABBA,ABDA,ABMM,ACES,ACRO,ACST,ADCP,ADES,ADHI,ADMF,ADMG,ADRO,AEGS,AGAR,AGRO,AGRS,AHAP,AIMS,AISA,AKKU,AKPI,AKRA,AKSI,ALDO,ALII,ALKA,ALMI,ALTO,AMAG,AMAN,AMAR,AMFG,AMIN,AMMN,AMOR,AMPT,AMRT,ANDI,ANJT,ANTM,APEX,APII,APLI,APLN,ARCI,AREA,ARGO,ARKA,ARKO,ARNA,ARTA,ARTI,ARTO,ASBI,ASDM,ASGR,ASHA,ASII,ASJT,ASLC,ASLI,ASMI,ASPR,ASRI,ASRM,ASSA,ATIC,ATLA,AUTO,AYLS,BABP,BACA,BAJA,BALI,BANK,BAPA,BAPI,BATA,BATO,BATR,BAYU,BBCA,BBHI,BBKP,BBLD,BBMD,BBNI,BBRI,BBRM,BBSI,BBSS,BBTN,BBYB,BCAP,BCIC,BCIP,BDMN,BEKS,BELL,BESS,BEST,BFIN,BGTG,BHAT,BHTK,BIKA,BIMA,BINA,BIPI,BIPP,BIRD,BISI,BISN,BKDP,BKSL,BKSW,BLES,BLOG,BLTA,BLTZ,BMAS,BMHS,BMRI,BMSR,BMTR,BNBA,BNBR,BNGA,BNII,BNLI,BOBA,BOGA,BOSS,BPFI,BPII,BPTR,BRAM,BRIS,BRMS,BRNA,BRPT,BRRC,BSBK,BSDE,BSIM,BSML,BSSR,BSWD,BTEK,BTEL,BTON,BTPN,BTPS,BUDI,BUKA,BUKK,BULL,BUMI,BVIC,BWPT,BYAN,CAKK,CAMP,CANI,CARE,CASS,CBDK,CBMF,CCSI,CDIA,CEKA,CENT,CFIN,CGAS,CHEK,CINT,CITA,CITY,CLEO,CLPI,CMNP,CMPP,CMRY,CNKO,CNTX,COAL,COCO,COIN,CPIN,CPRO,CRAB,CSAP,CSIS,CSMI,CSRA,CTBN,CTRA,CTTH,CUAN,DADA,DART,DATA,DAYA,DCII,DEAL,DEFI,DEWA,DFAM,DGIK,DGNS,DGWG,DIKA,DILD,DIVA,DKFT,DKHH,DLTA,DMAS,DMMX,DNAR,DOID,DPNS,DPUM,DSFI,DSNG,DSSA,DUTI,DVLA,DWGL,EAST,ECII,EDSA,EIKON,EKAD,ELJA,ELSA,ELTY,EMAS,EMDE,EMTK,ENRG,ENVY,EPMT,ERAA,ERTX,ESIP,ESSA,ESTA,ETWA,EVIN,EXCL,FAST,FASW,FILM,FIMI,FIRE,FISH,FIT,FITT,FLMC,FMII,FOOD,FORE,FORZ,FPNI,FPTI,FREN,GAMA,GDST,GDYR,GEMA,GEMS,GGRM,GIAA,GJTL,GLOB,GLVA,GMCW,GMTD,GOLD,GOLL,GOOD,GOTO,GPRA,GRLN,GRPH,GRPN,GSMF,GTBO,GTSI,GUNA,GWSA,GYLN,HADE,HAIS,HDIT,HDTX,HEAL,HELI,HERO,HEXA,HGII,HITS,HKMU,HMSP,HOKI,HOME,HOMI,HOPE,HOTL,HRME,HRTA,HRUM,HYGN,IACT,IATA,IBFN,IBST,ICBP,ICON,IDPR,IFSH,IGAR,IIKP,IKAI,IKAN,IKBI,IMAS,IMJS,IMPC,INAF,INAI,INCF,INCO,INDA,INDF,INDP,INDR,INDS,INDY,INFO,INKP,INMF,INPC,INPP,INPS,INRU,INTA,INTD,INTP,IPAC,IPCC,IPCM,IPSG,IPTV,IRRA,ISA,ISAT,ISSP,ITIC,ITMA,ITMG,JAST,JAWA,JAYA,JECC,JIHD,JKON,JKSW,JMAS,JPFA,JRPT,JSPT,JTPE,KAEF,KAQI,KARK,KAYU,KBAG,KBLI,KBLM,KBLV,KDSI,KEJU,KICI,KIJA,KINO,KIOS,KLBF,KMTR,KOBX,KOIN,KONI,KOPI,KOTA,KPAL,KPIG,KRAK,KRAS,KREN,KSIX,KUAS,LABA,LAPD,LCGP,LCKM,LEAD,LFLO,LINK,LION,LIVE,LMAS,LMPI,LMSH,LPCK,LPGI,LPIN,LPKR,LPLI,LPPF,LRN,LRNA,LSIP,LTC,LUCK,LUX,MAGP,MAIN,MALL,MANG,MAPA,MAPI,MARD,MARK,MASA,MAYA,MBAP,MBSS,MBTO,MCAS,MCOR,MDKA,MDLA,MDLN,MDRN,MEDC,MEGA,MERI,MERK,META,MFIN,MFMI,MGLV,MGNA,MGRO,MHKI,MICE,MIDI,MIKA,MINA,MIND,MINE,MIRA,MITI,MKAP,MKNT,MKPI,MLBI,MLIA,MLPT,MNCN,MOLI,MORA,MPMX,MPOO,MSIN,MSJA,MSKY,MTDL,MTEL,MTFN,MTLA,MTPS,MTRA,MTSM,MYOH,MYOR,MYRX,MYTX,NANO,NAPS,NASA,NATO,NELY,NFCX,NICE,NICK,NICL,NIPS,NIRO,NISP,NOBU,NRCA,NSSS,NUSA,NZIA,OASA,OBAT,OBMD,OCAP,OILS,OKAS,OMRE,OPMS,PADI,PALM,PAMG,PANI,PANR,PANS,PART,PBRX,PBSA,PCAR,PDES,PEGE,PEHA,PGAS,PGJO,PGLI,PGRX,PICO,PJAA,PJHB,PKPK,PLAS,PLIN,PMMP,PMUI,PNBN,PNBS,PNIN,PNLF,PNSE,POLA,POLI,POLL,POLU,POLY,POOL,PORT,POSA,PPRE,PRAS,PRDA,PRIM,PSAB,PSAT,PSDN,PSGO,PSKT,PTBA,PTIS,PTPP,PTRO,PTSN,PTSP,PURA,PURE,PZZA,RAJA,RALS,RANC,RATU,RBMS,RDTX,REAL,RELI,RICY,RIGS,RIMO,RLCO,RMBA,RMKE,RODA,ROTI,RUIS,SAFE,SAME,SAPX,SBMA,SCBD,SCCO,SCMA,SCNP,SCPI,SDMU,SDPC,SIDO,SILO,SIMA,SIMP,SINI,SITARA,SJA,SJMU,SKBM,SKLT,SKRN,SMCB,SMDM,SMDR,SMGR,SMLE,SMMA,SMMT,SMRA,SMRU,SMSM,SNLK,SOCI,SOLA,SONA,SOSS,SOTS,SPMA,SPRE,SQMI,SRAJ,SRIL,SRSN,SSIA,SSMS,SSTK,STTP,SUGI,SULI,SUPA,SUPR,SURE,SWAT,TAXI,TBIG,TBMS,TCID,TCPI,TEBE,TECH,TELE,TFCO,TGKA,TIFA,TINS,TIRA,TIRT,TKIM,TLKM,TMAS,TMPO,TOBA,TOPS,TOTO,TOWR,TPIA,TPMA,TRAM,TRIL,TRIM,TRIN,TRIO,TRIS,TRJA,TRON,TRST,TRUS,TSPC,TUGU,TURI,UANG,UCID,UFOE,ULTJ,UNIC,UNIQ,UNIT,UNSP,UNTR,UNVR,VISI,VIVA,VOKS,VRNA,WAPO,WEGE,WEHA,WICO,WIFI,WIKA,WINS,WIRG,WMPP,WMUU,WOMF,WOOD,WOWS,WSBP,WSKT,WTON,YELO,YOII,YPAS,YULE,YUPI,ZATA,ZBRA,ZINC";
+
         const ALL_VALID_TICKERS = VALID_IDX_DATABASE_STRING.split(",");
         const sectorsArr = Object.keys(SECTOR_MAPPING);
         let sIdx = 0;
@@ -384,19 +405,18 @@
             "CYCLICAL": { basePrice: 800, eps: 40, bookValue: 500, dividend: 25, growth: 8, histPe: 18, histPbv: 1.8, histDy: 2.8 },
             "PROPERTY": { basePrice: 700, eps: 45, bookValue: 900, dividend: 15, growth: 6, histPe: 16, histPbv: 0.8, histDy: 2.5 },
             "NON-CYCLICAL": { basePrice: 750, eps: 40, bookValue: 250, dividend: 20, growth: 7, histPe: 20, histPbv: 3.5, histDy: 2.5 },
+            "JASA-KONSUMEN": { basePrice: 900, eps: 50, bookValue: 600, dividend: 25, growth: 10, histPe: 18, histPbv: 1.5, histDy: 2.7 },
+            "SYARIAH": { basePrice: 2400, eps: 150, bookValue: 1200, dividend: 60, growth: 8, histPe: 16, histPbv: 2.0, histDy: 2.5 },
+            "DAY-TRADE": { basePrice: 500, eps: 10, bookValue: 200, dividend: 0, growth: 25, histPe: 50, histPbv: 4.5, histDy: 0.0 },
         };
 
         function App() {
             const [tick, setTick] = useState(0);
-            useEffect(() => {
-                // UI Micro-Refresh untuk trigger animasi namun tanpa merusak basis data presisi harga asli API market.
-                const interval = setInterval(() => setTick(t => t + 1), 1000); 
-                return () => clearInterval(interval);
-            }, []);
             const [activeSector, setActiveSector] = useState("ALL");
+            const [searchQuery, setSearchQuery] = useState("");
             const [selectedValuationSector, setSelectedValuationSector] = useState(null);
-            const [ihsgPrice, setIhsgPrice] = useState("Loading...");
-            const [ihsgChange, setIhsgChange] = useState("...");
+            const [ihsgPrice, setIhsgPrice] = useState("7,705.75");
+            const [ihsgChange, setIhsgChange] = useState("+0.68%");
             const [isIhsgUp, setIsIhsgUp] = useState(true);
             const [activeTicker, setActiveTicker] = useState("IHSG");
             const [stocks, setStocks] = useState(initialStocks);
@@ -406,169 +426,114 @@
                 gold: { price: "$2,080.5", change: "+12.4", isUp: true }
             });
 
-            // Real-time Macro Correlation Fetcher
+            // Trigger UI refresh
             useEffect(() => {
-                const fetchMacro = async () => {
-                    try {
-                        const symbols = "IDR=X,GC=F";
-                        const yfUrl = `https://query2.finance.yahoo.com/v8/finance/spark?symbols=${symbols}&interval=1d&range=1d`;
-                        const res = await fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            
-                            setMacroData(prev => {
-                                let newUsd = prev.usd;
-                                if (data['IDR=X'] && data['IDR=X'].close && data['IDR=X'].close.length > 0) {
-                                    const closes = data['IDR=X'].close.filter(c => c !== null);
-                                    if (closes.length > 0) {
-                                        const current = closes[closes.length - 1];
-                                        const prevClose = data['IDR=X'].chartPreviousClose || current;
-                                        const change = current - prevClose;
-                                        newUsd = { 
-                                            price: Math.round(current).toLocaleString('id-ID'), 
-                                            change: `${change >= 0 ? '+' : ''}${Math.round(change)}`, 
-                                            isUp: change >= 0 
-                                        };
-                                    }
-                                }
-                                
-                                let newGold = prev.gold;
-                                if (data['GC=F'] && data['GC=F'].close && data['GC=F'].close.length > 0) {
-                                    const closes = data['GC=F'].close.filter(c => c !== null);
-                                    if (closes.length > 0) {
-                                        const current = closes[closes.length - 1];
-                                        const prevClose = data['GC=F'].chartPreviousClose || current;
-                                        const change = current - prevClose;
-                                        newGold = { 
-                                            price: `$${current.toLocaleString('en-US', { maximumFractionDigits: 1, minimumFractionDigits: 1 })}`, 
-                                            change: `${change >= 0 ? '+' : ''}${change.toFixed(1)}`, 
-                                            isUp: change >= 0 
-                                        };
-                                    }
-                                }
-                                
-                                return { ...prev, usd: newUsd, gold: newGold };
-                            });
-                        }
-                    } catch (e) {
-                        console.error("Failed to fetch Macro:", e);
-                    }
-                };
-                fetchMacro();
-                const macroInterval = setInterval(fetchMacro, 60000);
-                return () => clearInterval(macroInterval);
+                const interval = setInterval(() => setTick(t => t + 1), 1000); 
+                return () => clearInterval(interval);
             }, []);
 
-            useEffect(() => {
-                const fetchIhsg = async () => {
-                    try {
-                        const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/^JKSE?interval=1d&range=2d";
-                        const res = await fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`);
+            const fetchMacro = async () => {
+                try {
+                    const symbols = "IDR=X,GC=F";
+                    const yfUrl = `https://query2.finance.yahoo.com/v8/finance/spark?symbols=${symbols}&interval=1d&range=1d`;
+                    const res = await fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setMacroData(prev => {
+                            let newUsd = prev.usd;
+                            if (data['IDR=X'] && data['IDR=X'].close && data['IDR=X'].close.length > 0) {
+                                const closes = data['IDR=X'].close.filter(c => c !== null);
+                                if (closes.length > 0) {
+                                    const current = closes[closes.length - 1];
+                                    const prevClose = data['IDR=X'].chartPreviousClose || current;
+                                    const change = current - prevClose;
+                                    newUsd = { price: Math.round(current).toLocaleString('id-ID'), change: `${change >= 0 ? '+' : ''}${Math.round(change)}`, isUp: change >= 0 };
+                                }
+                            }
+                            let newGold = prev.gold;
+                            if (data['GC=F'] && data['GC=F'].close && data['GC=F'].close.length > 0) {
+                                const closes = data['GC=F'].close.filter(c => c !== null);
+                                if (closes.length > 0) {
+                                    const current = closes[closes.length - 1];
+                                    const prevClose = data['GC=F'].chartPreviousClose || current;
+                                    const change = current - prevClose;
+                                    newGold = { price: `$${current.toLocaleString('en-US', { maximumFractionDigits: 1, minimumFractionDigits: 1 })}`, change: `${change >= 0 ? '+' : ''}${change.toFixed(1)}`, isUp: change >= 0 };
+                                }
+                            }
+                            return { ...prev, usd: newUsd, gold: newGold };
+                        });
+                    }
+                } catch (e) { console.error("Failed to fetch Macro:", e); }
+            };
+
+            const fetchIhsg = async () => {
+                try {
+                    const yfUrl = "https://query1.finance.yahoo.com/v8/finance/chart/^JKSE?interval=1d&range=2d";
+                    const res = await fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`);
+                    if (res.ok) {
                         const data = await res.json();
                         const quote = data.chart.result[0].indicators.quote[0];
                         const closes = quote.close.filter(c => c !== null);
-
                         if (closes.length > 0) {
                             const current = closes[closes.length - 1];
                             const prev = closes.length > 1 ? closes[closes.length - 2] : data.chart.result[0].meta.chartPreviousClose;
-
                             const pct = ((current - prev) / prev * 100).toFixed(2);
                             setIhsgPrice(current.toLocaleString('id-ID', { maximumFractionDigits: 2 }));
                             setIhsgChange(`${pct > 0 ? '+' : ''}${pct}%`);
                             setIsIhsgUp(pct >= 0);
                         }
-                    } catch (e) {
-                        console.error("Failed to fetch IHSG:", e);
-                        setIhsgPrice("7,705.75");
-                        setIhsgChange("+0.68%");
                     }
-                };
-                fetchIhsg();
+                } catch (e) { console.error("Failed to fetch IHSG:", e); }
+            };
 
-                // Auto refresh IHSG every 30 seconds
-                const ihsgInterval = setInterval(fetchIhsg, 30000);
-                return () => clearInterval(ihsgInterval);
-            }, []);
-
-            // Real-time stock price updater for Screener
-            useEffect(() => {
-                const fetchTopPrices = async () => {
-                    const batchSize = 150; // Lebih besar agar request ke Yahoo turun drastis (hanya ~6 request)
-                    let finalSortRequired = false;
-
-                    for (let i = 0; i < ALL_SECTOR_TICKERS.length; i += batchSize) {
-                        const chunk = ALL_SECTOR_TICKERS.slice(i, i + batchSize);
-                        const symbols = chunk.map(t => t + '.JK').join(',');
-                        // Transisi ke endpoint '/spark' karena endpoint '/quote' v7 sekarang memerlukan otentikasi (cookie/crumb). Endpoint spark tetap mendukung multiple symbols dan 'fault-tolerant'.
-                        const yfUrl = `https://query1.finance.yahoo.com/v8/finance/spark?symbols=${symbols}&interval=1d&range=5d`;
-
-                        try {
-                            const res = await fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`);
-                            if (res.ok) {
-                                const json = await res.json();
-                                
-                                if (json && Object.keys(json).length > 0) {
-                                    finalSortRequired = true;
-
-                                    // Segera update UI secara agresif (Progressive Loading Stream)
-                                    setStocks(prevStocks => {
-                                        const newStocks = prevStocks.map(stock => {
-                                            const tData = json[stock.t + '.JK'];
-                                            
-                                            // Validasi khusus untuk menyeimbangi response spark API
-                                            if (tData && tData.close && tData.close.length > 0) {
-                                                const closes = tData.close.filter(c => c !== null);
-                                                if (closes.length > 0) {
-                                                    const ap = closes[closes.length - 1];
-                                                    // Perbaikan: gunakan harga sehari sebelumnya (index - 2) untuk mengkalkulasi pct harian
-                                                    const prevClose = closes.length > 1 ? closes[closes.length - 2] : (tData.chartPreviousClose || ap);
-                                                let pct = 0;
-                                                if (prevClose > 0) pct = ((ap - prevClose) / prevClose) * 100;
-                                                
-                                                let p = 50; let s = 'Hold'; let r = '-';
-                                                
-                                                if (pct > 2) { p = 80 + Math.min(15, pct*2); s = 'Buy'; r = '1:3'; }
-                                                else if (pct > 0) { p = 60 + pct*10; s = 'Buy'; r = '1:2'; }
-                                                else if (pct > -1) { p = 40 + (pct+1)*20; s = 'Hold'; r = '1:1.5'; }
-                                                else if (pct > -3) { p = 20 + Math.max(0, (pct+3)*10); s = 'Wait'; r = '-'; }
-                                                else { p = Math.max(5, 20 + pct*2); s = 'Sell'; r = '-'; }
-                                                
-                                                p = Math.min(99, Math.max(1, p)).toFixed(0);
-                                                return { ...stock, ap, pct, p: p + '%', s, r };
-                                                }
-                                            }
-                                            return stock; // Biarkan utuh apabila data market kosong (delisted)
-                                        });
-                                        return newStocks; // Cegah array melompat-lompat dengan tidak mengurutkan saat progressive loading berjalan
-                                    });
-                                }
-                            }
-                            
-                            // Anti-Blocker Timeout (400ms) untuk melawan pemblokiran Request Rate-Limit YF Server
-                            await new Promise(r => setTimeout(r, 400));
-
-                        } catch (e) {
-                            console.error("Failed to fetch chunk:", chunk, e);
+            const fetchStocks = async () => {
+                try {
+                    const res = await fetch(`market_data.json?_=${Date.now()}`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json && Object.keys(json).length > 0) {
+                            setStocks(prevStocks => {
+                                const newStocks = prevStocks.map(stock => {
+                                    const tData = json[stock.t + '.JK'];
+                                    if (tData) {
+                                        const closes = (tData.close || []).filter(c => c !== null);
+                                        if (closes.length > 0 || tData.chartPreviousClose) {
+                                            const ap = closes.length > 0 ? closes[closes.length - 1] : tData.chartPreviousClose;
+                                            const prevClose = closes.length > 1 ? closes[closes.length - 2] : (tData.chartPreviousClose || ap);
+                                            let pct = 0;
+                                            if (prevClose > 0) pct = ((ap - prevClose) / prevClose) * 100;
+                                            let p = 50; let s = 'Hold'; let r = '-';
+                                            if (pct > 2) { p = 80 + Math.min(15, pct*2); s = 'Buy'; r = '1:3'; }
+                                            else if (pct > 0) { p = 60 + pct*10; s = 'Buy'; r = '1:2'; }
+                                            else if (pct > -1) { p = 40 + (pct+1)*20; s = 'Hold'; r = '1:1.5'; }
+                                            else if (pct > -3) { p = 20 + Math.max(0, (pct+3)*10); s = 'Wait'; r = '-'; }
+                                            else { p = Math.max(5, 20 + pct*2); s = 'Sell'; r = '-'; }
+                                            p = Math.min(99, Math.max(1, p)).toFixed(0);
+                                            return { ...stock, ap, pct, p: p + '%', s, r };
+                                        }
+                                    }
+                                    return { ...stock, ap: 0, pct: 0, p: '0%', s: 'SUSPENDED', r: '-' }; 
+                                });
+                                return [...newStocks].sort((a, b) => b.pct - a.pct);
+                            });
                         }
                     }
+                } catch (e) { console.error("Gagal refresh data:", e); }
+            };
 
-                    // Sort 100% sempurna setelah semua gelombang transmisi progressive loading selesai masuk
-                    if (finalSortRequired) {
-                        setStocks(prevStocks => {
-                            const sortedStocks = [...prevStocks];
-                            sortedStocks.sort((a, b) => b.pct - a.pct);
-                            return sortedStocks;
-                        });
-                    }
+            useEffect(() => {
+                fetchMacro();
+                fetchIhsg();
+                fetchStocks();
+                const macroInterval = setInterval(fetchMacro, 60000);
+                const ihsgInterval = setInterval(fetchIhsg, 10000);
+                const stockInterval = setInterval(fetchStocks, 10000);
+                return () => {
+                    clearInterval(macroInterval);
+                    clearInterval(ihsgInterval);
+                    clearInterval(stockInterval);
                 };
-
-                // Fetch immediately, then poll every 30 seconds for main API loop
-                fetchTopPrices();
-                const pollScreener = setInterval(fetchTopPrices, 30000);
-
-                return () => clearInterval(pollScreener);
             }, []);
-
             const generateAiData = (stock) => {
                 const roundPrice = (price, roundTo = 25) => Math.max(roundTo, Math.round(price / roundTo) * roundTo);
                 const ap = stock.ap || 1000;
@@ -1124,6 +1089,18 @@
 
                                 {/* Auto Screener Result */}
                                 <Card title="Live Sector Heatmap & Index Screener" icon={<Icons.TrendingUp />}>
+                                    <div className="mb-4 relative">
+                                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
+                                            className="bg-slate-800/80 border border-slate-700 text-slate-200 text-sm font-semibold tracking-wider rounded-lg focus:ring-primary focus:border-primary block w-full pl-10 p-2.5 transition-all placeholder-slate-500 shadow-inner" 
+                                            placeholder="Cari kode saham... (Contoh: GOTO, BBCA)" 
+                                        />
+                                    </div>
                                     <div className="flex gap-2 overflow-x-auto pb-4 mb-2 scrollbar-hide">
                                         <button 
                                             onClick={() => setActiveSector("ALL")} 
@@ -1158,7 +1135,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {stocks.filter(row => activeSector === 'ALL' || row.sector === activeSector).sort((a,b) => b.pct - a.pct).map((row, i) => {
+                                                {stocks.filter(row => (activeSector === 'ALL' || row.sector === activeSector) && (searchQuery === '' || row.t.includes(searchQuery))).sort((a,b) => b.pct - a.pct).map((row, i) => {
                                                     const bmti = generateBMTI(row);
                                                     
                                                     let finalAction = row.s;

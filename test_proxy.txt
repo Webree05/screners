@@ -1,0 +1,1 @@
+{"GOTO.JK":{"timestamp":[1773367200,1773712800,1774404000,1774495140],"end":null,"symbol":"GOTO.JK","start":null,"previousClose":null,"chartPreviousClose":55.0,"dataGranularity":300,"close":[55.0,51.0,53.0,52.0]}}
