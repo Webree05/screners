@@ -287,7 +287,24 @@
     <main>
         <article>
             <section>
-                <h3>Input Data Pasar</h3>
+                <div class="search-section" style="margin-bottom: 2.5rem; background: var(--card-bg); padding: 2rem; border-radius: 12px; border: 2px solid var(--primary); box-shadow: 0 4px 15px rgba(37, 99, 235, 0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin-bottom: 0; border: none; padding: 0; color: var(--primary);">Real-Time Auto Fetch (IDX)</h3>
+                        <span style="font-size: 0.8rem; background: #dcfce7; color: #16a34a; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: bold;">LIVE</span>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Cukup masukkan kode saham, sistem AI akan otomatis menarik data harga, volume, MA, dan volatilitas secara langsung (real-time). Tidak perlu input manual!</p>
+                    
+                    <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="input-group" style="flex: 1; min-width: 200px;">
+                            <label for="ticker-search">Kode Saham (Contoh: GOTO, BBCA)</label>
+                            <input type="text" id="ticker-search" placeholder="Ketik kode emiten..." style="text-transform: uppercase; font-weight: bold; border-width: 2px; border-color: var(--primary);">
+                        </div>
+                        <button type="button" class="btn-submit" id="autoFetchBtn" style="margin-top: 0; width: auto; padding: 0.75rem 2rem;">Tarik Data Otomatis ⚡</button>
+                    </div>
+                    <div id="fetchStatus" style="margin-top: 1rem; font-size: 0.95rem; font-weight: 600; display: none; padding: 0.75rem; border-radius: 6px;"></div>
+                </div>
+
+                <h3>Input Data Pasar (Manual Overrides)</h3>
                 <div id="errorMessage" class="error-message"></div>
                 
                 <form id="signalForm">
@@ -384,6 +401,125 @@
             const resVol = document.getElementById('resVol');
             const resScore = document.getElementById('resScore');
             const resSignal = document.getElementById('resSignal');
+
+            // Auto Fetch Logic
+            const autoFetchBtn = document.getElementById('autoFetchBtn');
+            const tickerSearch = document.getElementById('ticker-search');
+            const fetchStatus = document.getElementById('fetchStatus');
+
+            autoFetchBtn.addEventListener('click', async () => {
+                const rawTicker = tickerSearch.value.trim().toUpperCase();
+                if (!rawTicker) {
+                    fetchStatus.textContent = "Masukkan kode saham terlebih dahulu.";
+                    fetchStatus.style.display = 'block';
+                    fetchStatus.style.backgroundColor = "var(--sell-bg)";
+                    fetchStatus.style.color = "var(--sell-color)";
+                    return;
+                }
+
+                fetchStatus.innerHTML = "🔍 Menghubungkan ke Yahoo Finance via Proxy... <br>Kode: <strong>" + rawTicker + "</strong>";
+                fetchStatus.style.display = 'block';
+                fetchStatus.style.backgroundColor = "var(--hold-bg)";
+                fetchStatus.style.color = "var(--hold-color)";
+
+                try {
+                    const actualTicker = rawTicker === 'IHSG' ? '^JKSE' : `${rawTicker}.JK`;
+                    const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${actualTicker}?interval=1d&range=2mo`;
+                    
+                    const res = await fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`);
+                    
+                    if (!res.ok) {
+                        const errText = await res.text();
+                        try {
+                            const errJson = JSON.parse(errText);
+                            throw new Error(errJson.message || "Gagal terhubung ke server data pasar.");
+                        } catch(e) {
+                            throw new Error("Server Proxy Error (HTTP " + res.status + ")");
+                        }
+                    }
+                    
+                    const json = await res.json();
+                    
+                    // Handle proxy specific error responses
+                    if (json.status === 'error' || json.status === 'forbidden') {
+                        throw new Error(json.message);
+                    }
+
+                    if (!json.chart || !json.chart.result || json.chart.result.length === 0) {
+                        throw new Error("Data saham tidak ditemukan. Pastikan emiten terdaftar di IDX.");
+                    }
+
+                    const result = json.chart.result[0];
+                    if(!result.indicators || !result.indicators.quote || result.indicators.quote.length === 0) {
+                        throw new Error("Data market kosong.");
+                    }
+                    
+                    const quote = result.indicators.quote[0];
+                    const closes = (quote.close || []).filter(c => c !== null);
+                    const volumes = quote.volume ? quote.volume.filter(v => v !== null) : [];
+                    
+                    if (closes.length < 20) {
+                        throw new Error("Data historis tidak mencukupi untuk perhitungan statistik indikator (minimal butuh 20 hari).");
+                    }
+
+                    // Get perfect real-time price from meta if available
+                    const metaPrice = result.meta.regularMarketPrice;
+                    const pt = metaPrice || closes[closes.length - 1]; // Harga riil detik ini
+                    const pt_prev = result.meta.previousClose || closes[closes.length - 2] || pt; // Previous close
+                    
+                    // Harga n hari lalu (n=5 days for weekly momentum)
+                    const n_days = 5;
+                    const pt_n_index = Math.max(0, closes.length - 1 - n_days);
+                    const pt_n = closes[pt_n_index];
+
+                    // Volume hari ini
+                    const vt = result.meta.regularMarketVolume || (volumes.length > 0 ? volumes[volumes.length - 1] : 5000000);
+
+                    // Moving Average 20 periode
+                    const ma_period = 20;
+                    const recentCloses = closes.slice(-ma_period);
+                    const sum = recentCloses.reduce((a, b) => a + b, 0);
+                    const mu = sum / recentCloses.length;
+
+                    // Standar deviasi harga (sigma) untuk 20 periode
+                    const variance = recentCloses.reduce((a, b) => a + Math.pow(b - mu, 2), 0) / Math.max(1, recentCloses.length - 1);
+                    const sigma = Math.sqrt(variance);
+
+                    // Volume rata-rata (vavg) 20 periode
+                    const recentVolumes = volumes.slice(-ma_period);
+                    const vSum = recentVolumes.reduce((a, b) => a + b, 0);
+                    const vavg = vSum / Math.max(1, recentVolumes.length);
+
+                    // Fill Form automatically
+                    document.getElementById('pt').value = pt.toFixed(2);
+                    document.getElementById('pt_n').value = pt_n.toFixed(2);
+                    document.getElementById('mu').value = mu.toFixed(2);
+                    document.getElementById('sigma').value = sigma.toFixed(2);
+                    document.getElementById('vt').value = vt.toFixed(0);
+                    document.getElementById('vavg').value = vavg.toFixed(0);
+                    document.getElementById('pt_prev').value = pt_prev.toFixed(2);
+
+                    fetchStatus.innerHTML = `✅ Selesai! Data ${rawTicker} berhasil ditarik secara Real-Time. <br> Harga Saat Ini: <strong>Rp ${pt.toLocaleString('id-ID')}</strong>`;
+                    fetchStatus.style.backgroundColor = "var(--buy-bg)";
+                    fetchStatus.style.color = "var(--buy-color)";
+
+                    // Automatically compute signal
+                    setTimeout(() => calculateBtn.click(), 400);
+
+                } catch (err) {
+                    fetchStatus.textContent = "✖ Error: " + err.message;
+                    fetchStatus.style.backgroundColor = "var(--sell-bg)";
+                    fetchStatus.style.color = "var(--sell-color)";
+                }
+            });
+
+            // Enter key trigger auto-fetch
+            tickerSearch.addEventListener('keypress', (e) => {
+                if(e.key === 'Enter') {
+                    e.preventDefault();
+                    autoFetchBtn.click();
+                }
+            });
 
             calculateBtn.addEventListener('click', () => {
                 // Reset errors and hide results on new calculation
