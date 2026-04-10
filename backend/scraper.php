@@ -5,10 +5,43 @@
 
 set_time_limit(0);
 error_reporting(E_ALL);
+date_default_timezone_set('Asia/Jakarta');
 
 function log_message($msg) {
     echo "[" . date('H:i:s') . "] " . $msg . "\n";
 }
+
+function get_yahoo_crumb(&$cookie, &$crumb, $userAgent) {
+    if (!empty($cookie) && !empty($crumb)) return true;
+    
+    log_message("Requesting Yahoo session cookies & crumb...");
+    $ch = curl_init('https://fc.yahoo.com/');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, true);
+    curl_setopt($ch, CURLOPT_NOBODY, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, $userAgent);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $res = curl_exec($ch);
+    if (preg_match('/^Set-Cookie:\s*(A3=[^;]+)/im', $res, $match)) {
+        $cookie = $match[1];
+    }
+    
+
+    
+    if (empty($cookie)) return false;
+    
+    $ch2 = curl_init('https://query1.finance.yahoo.com/v1/test/getcrumb');
+    curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch2, CURLOPT_COOKIE, $cookie);
+    curl_setopt($ch2, CURLOPT_USERAGENT, $userAgent);
+    curl_setopt($ch2, CURLOPT_SSL_VERIFYPEER, false);
+    $crumb = curl_exec($ch2);
+    
+
+    
+    return !empty($crumb);
+}
+
 
 $SECTOR_MAPPING = [
     "TECHNOLOGY" => ["GOTO", "EMTK", "BUKA", "WIFI", "MLPT", "DCII", "BELI", "GLVA", "AWAN", "TRON", "PGJO", "TECH", "KREN", "MCAS", "NFCX", "DIVA", "LUCK", "ZATA", "SEGE", "IRSX"],
@@ -35,20 +68,30 @@ foreach ($SECTOR_MAPPING as $sec => $tickers) {
     $API_TICKERS = array_merge($API_TICKERS, $tickers);
 }
 $ALL_VALID_TICKERS = explode(",", $VALID_IDX_DATABASE_STRING);
-$ALL_SECTOR_TICKERS = array_values(array_unique(array_merge($API_TICKERS, $ALL_VALID_TICKERS)));
+$MACRO_GLOBAL = ["^JKSE", "USDIDR=X", "GOLD=F"]; // IHSG, Rupiah, Gold
+$ALL_SECTOR_TICKERS = array_values(array_filter(array_unique(array_merge($API_TICKERS, $ALL_VALID_TICKERS, $MACRO_GLOBAL))));
 
 $total_tickers = count($ALL_SECTOR_TICKERS);
 log_message("Memulai proses scraping untuk $total_tickers saham...");
 
-// Batas aman API Yahoo Spark adalah 100-200 simbol per request
-$batch_size = 100;
+// Batas aman API Yahoo Spark adalah maks 20 simbol per request (API error 400 jika lebih dari 20)
+$batch_size = 20;
+
+
+// Optimized for both CLI/Background loop and Online/Cron Job modes
+$is_cron = (php_sapi_name() != "cli" || (isset($argv) && in_array("--once", $argv)));
 
 while (true) {
-    if (date('H') < 8 || date('H') > 22) {
-        log_message("Market closed. Standby 300 detik...");
-        sleep(300);
-        continue;
+    static $yahoo_cookie = '';
+    static $yahoo_crumb = '';
+    static $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+
+    if (!get_yahoo_crumb($yahoo_cookie, $yahoo_crumb, $userAgent)) {
+         log_message("Warning: Gagal mendapatkan cookie Yahoo. Lanjut tanpa crumb.");
     }
+
+    // Bot sekarang berjalan 24/7 nonstop secara agresif seperti standar Crypto.
+    // Logic Standby (Market Closed) dihapus agar bisa mengupdate/menyinkronkan data terus menerus meskipun weekend.
 
     $chunks = array_chunk($ALL_SECTOR_TICKERS, $batch_size);
     $market_data = [];
@@ -57,10 +100,21 @@ while (true) {
     log_message("Memulai siklus update data ($total_chunks batches)...");
 
     foreach ($chunks as $index => $chunk) {
-        $symbols = array_map(function($t) { return $t . '.JK'; }, $chunk);
+        $symbols = array_map(function($t) { 
+            $t = trim($t);
+            if (strpos($t, '^') === 0 || strpos($t, '=') !== false) return $t; 
+            return $t . '.JK'; 
+        }, $chunk);
         $symbols_str = implode(',', $symbols);
+        $hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+        $host = $hosts[array_rand($hosts)];
         // Optimized interval & range for performance but keep 5d for pct calculations
-        $url = "https://query1.finance.yahoo.com/v8/finance/spark?symbols=" . urlencode($symbols_str) . "&interval=1d&range=5d";
+        $url = "https://" . $host . "/v8/finance/spark?symbols=" . urlencode($symbols_str) . "&interval=1d&range=5d";
+        if (!empty($yahoo_crumb)) {
+            $url .= "&crumb=" . urlencode(trim($yahoo_crumb));
+        }
+        
+        $start_ua = $userAgent;
         
         $max_retries = 2;
         $success = false;
@@ -69,14 +123,26 @@ while (true) {
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
+            curl_setopt($ch, CURLOPT_USERAGENT, $start_ua);
+            
+            $headers = [
+                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language: en-US,en;q=0.5'
+            ];
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            
+            if (!empty($yahoo_cookie)) {
+                curl_setopt($ch, CURLOPT_COOKIE, $yahoo_cookie);
+            }
+            
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_TIMEOUT, 15);
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            
+
 
             if ($httpCode === 200 && $response) {
                 $json = json_decode($response, true);
@@ -88,28 +154,62 @@ while (true) {
             }
             
             if ($retry < $max_retries) {
-                log_message("Retry batch " . ($index + 1) . "... ($retry)");
+                log_message("Retry batch " . ($index + 1) . "... ($retry) HTTP CODE: " . (isset($httpCode) ? $httpCode : 'N/A'));
                 sleep(1);
             }
         }
 
         if (!$success) {
-            log_message("Warning: Batch ".($index + 1)." GAGAL setelah $max_retries retries.");
+            log_message("Warning: Batch ".($index + 1)." GAGAL setelah $max_retries retries | HTTP CODE: " . (isset($httpCode) ? $httpCode : 'N/A'));
+            // Reset cookie and crumb if blocked (429) or unauthorized (401)
+            if (isset($httpCode) && ($httpCode == 429 || $httpCode == 401)) {
+                $yahoo_cookie = '';
+                $yahoo_crumb = '';
+            }
         }
+
         
-        // Jeda sangat singkat untuk efisiensi tinggi
-        usleep(300000); // 0.3 detik
+        // Jeda sangat aman agar tidak terkena Too Many Requests (429) filter
+        usleep(1500000); // 1.5 detik
     }
 
     if (count($market_data) > 0) {
         $filePath = __DIR__ . '/../market_data.json';
-        file_put_contents($filePath, json_encode($market_data));
-        log_message("UP-TO-DATE: Berhasil menyimpan " . count($market_data) . " emiten ke market_data.json");
+        $existing_data = [];
+        if (file_exists($filePath)) {
+            $existing_raw = @file_get_contents($filePath);
+            if (!empty($existing_raw)) {
+                $existing_json = json_decode($existing_raw, true);
+                if (is_array($existing_json)) {
+                    $existing_data = $existing_json;
+                }
+            }
+        }
+        
+        $merged_data = array_merge($existing_data, $market_data);
+        $json_payload = json_encode($merged_data);
+        
+        if ($json_payload !== false) {
+            // Atomic safe write (mencegah korupsi file jika bot distop paksa)
+            $tempFile = $filePath . '.tmp';
+            file_put_contents($tempFile, $json_payload);
+            
+            if (file_exists($tempFile)) {
+                @unlink($filePath); // Bersihkan file lama jika ada (optional, rename akan overwrite)
+                rename($tempFile, $filePath);
+                log_message("UP-TO-DATE: Sukses menyimpan " . count($market_data) . " emiten. Total database: " . count($merged_data));
+            } else {
+                log_message("Error: Gagal membuat file temporary untuk market data.");
+            }
+        } else {
+            log_message("Error: Gagal melakukan JSON Encode pada data market.");
+        }
     } else {
-        log_message("Error: Seluruh request gagal, mengecek koneksi...");
+        log_message("Warning: Siklus ini gagal mengambil data baru. Mengecek koneksi Yahoo...");
     }
 
-    log_message("Siklus selesai. Standby 5 detik...");
-    sleep(5); 
+    log_message("Siklus selesai. Standby 10 detik...");
+    if ($is_cron) break; // Exit loop for Cron Job compatibility
+    sleep(10); 
 }
 ?>

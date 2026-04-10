@@ -5,6 +5,7 @@ curl_setopt($ch, CURLOPT_URL, $url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
 $response = curl_exec($ch);
-curl_close($ch);
+
+
 echo json_encode(json_decode($response), JSON_PRETTY_PRINT);
 ?>
