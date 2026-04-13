@@ -1489,10 +1489,17 @@
                 });
 
                 const simulation = d3.forceSimulation(nodes)
-                    .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.source.type === 'IHSG' ? 220 : 180))
-                    .force("charge", d3.forceManyBody().strength(-2000))
-                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 6 + 25))
+                    .alphaDecay(0.06)
+                    .velocityDecay(0.4)
+                    .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.source.ring === 0 ? 240 : 180).strength(1))
+                    .force("charge", d3.forceManyBody().strength(-1200))
+                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 6 + 35).iterations(2))
                     .force("center", d3.forceCenter(width / 2, height / 2));
+
+                // Anchor center nodes to prevent entire graph from drifting
+                nodes.forEach(d => {
+                    if (d.ring === 0) { d.fx = width / 2; d.fy = height / 2; }
+                });
 
                 const container = svg.append("g");
                 
@@ -1518,9 +1525,17 @@
                     })
                     .style("cursor", d => d.type === 'IHSG' ? 'default' : 'pointer')
                     .call(d3.drag()
-                        .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-                        .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
-                        .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+                        .on("start", (e, d) => { 
+                            if (!e.active) simulation.alphaTarget(0.2).restart(); 
+                            d.fx = d.x; d.fy = d.y; 
+                        })
+                        .on("drag", (e, d) => { 
+                            d.fx = e.x; d.fy = e.y; 
+                        })
+                        .on("end", (e, d) => { 
+                            if (!e.active) simulation.alphaTarget(0);
+                            if (d.ring !== 0) { d.fx = null; d.fy = null; } 
+                        })
                     );
 
                 // Node Circles (Multi-layered Glass Effect)
