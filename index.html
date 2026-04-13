@@ -1451,7 +1451,7 @@
                     return { nodes, links };
                 },
                 getAnalysis: () => {
-                    if (viewDepth === 'sectors') return "IHSG DRAGON INTELLIGENCE: 14 Sectors scanned. Capital rotation detected in Real Estate and Financial services. Trend remains Bullish.";
+                    if (viewDepth === 'sectors') return "IHSG FLOW INTELLIGENCE: 14 Sectors scanned. Capital rotation detected in Real Estate and Financial services. Trend remains Bullish.";
                     if (viewDepth === 'stocks') return `DEEP DIVE (${selectedSector}): Analyzing high-liquidity assets. Market makers footprint identified in top tickers.`;
                     return `WHALE TRACKER (${selectedStock}): Mapping institutional ownership chain. Significant accumulation by global custodial banks identified.`;
                 }
@@ -1696,7 +1696,7 @@
                         </div>
                     </div>
                     
-                    {/* THE DRAGON NETWORK INTELLIGENCE MATRIX (THE "BUBBLE" VIEW) */}
+                    {/* THE FLOW NETWORK INTELLIGENCE MATRIX (THE "BUBBLE" VIEW) */}
                     <div className="mb-8 p-0 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
                          <BubbleDragon ticker={activeTicker} stocks={stocks} />
                     </div>
@@ -1725,7 +1725,7 @@
                         </div>
                     </div>
 
-                    {/* Worm or Dragon Pattern Valuation Section */}
+                    {/* Market Matrix Rotation Valuation Section */}
                     <div className="mb-8 p-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
                          <DragonValuationChart ticker={activeTicker} stocks={stocks} />
                     </div>
@@ -2036,27 +2036,6 @@
             );
         };
 
-        const ValuationSubChart = ({ type, quarters, mean, sd, current }) => {
-            const chartRef = useRef(null);
-            useEffect(() => {
-                if (!chartRef.current || !quarters) return;
-                const container = chartRef.current; const margin = { top: 20, right: 70, bottom: 40, left: 30 };
-                const width = container.clientWidth - margin.left - margin.right; const height = 300 - margin.top - margin.bottom;
-                d3.select(container).selectAll("*").remove();
-                const svg = d3.select(container).append("svg").attr("width", width + margin.left + margin.right).attr("height", height + margin.top + margin.bottom).append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-                const x = d3.scalePoint().domain(quarters.map(d => d.name)).range([0, width]);
-                const activeValues = quarters.map(d => type === 'PER' ? d.per : d.pbv);
-                const y = d3.scaleLinear().domain([Math.min(d3.min(activeValues), mean - 2.5 * sd) * 0.85, Math.max(d3.max(activeValues), mean + 2.5 * sd) * 1.15]).range([height, 0]);
-                const line = d3.line().x(d => x(d.name)).y(d => y(type === 'PER' ? d.per : d.pbv)).curve(d3.curveMonotoneX);
-                svg.append("path").datum(quarters).attr("fill", "none").attr("stroke", "#00F0FF").attr("stroke-width", 2).attr("d", line);
-            }, [quarters, mean, sd, type]);
-            return (
-                <div className="flex-1 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/50">
-                    <div className="flex justify-between items-center mb-4"><h4 className="text-xl font-black text-white italic">{type}</h4><div className="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">CUR: <span className="text-primary">{current.toFixed(2)}x</span></div></div>
-                    <div ref={chartRef} className="w-full h-[300px]"></div>
-                </div>
-            );
-        };
 
         const DragonValuationChart = ({ ticker, stocks }) => {
             const stock = (ticker === 'IHSG') ? { t: "IHSG", sector: "COMPOSITE", ap: 7240 } : (stocks.find(s => s.t === ticker) || (stocks && stocks[0]) || { sector: "FINANCE", ap: 1500 });
@@ -2497,7 +2476,7 @@
                     let status = "Fair", valRatio = per / base.histPe;
                     if (per < base.histPe && per/base.growth < 1 && pbv < base.histPbv) status = "Undervalued";
                     else if (per > base.histPe && per/base.growth > 1.5) status = "Overvalued";
-                    return { sector: sec, price, per, pbv, dy, status, valuationRatio: valRatio };
+                    return { sector: sec, price, _per: per, _pbv: pbv, dy, status, valuationRatio: valRatio };
                 }).sort((a,b) => b.valuationRatio - a.valuationRatio);
             }, [sectorPerformance]);
 
