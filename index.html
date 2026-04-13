@@ -1459,21 +1459,24 @@
                 }
             }), [viewDepth, selectedSector, selectedStock, stocks, investorIntel]);
 
+            const graphData = useMemo(() => aiEngine.detectRelationships(ticker), [aiEngine, ticker]);
+
+            // EFFECT 1: Structure & Simulation (Stable)
             useEffect(() => {
                 if (!svgRef.current || !window.d3) return;
                 const d3 = window.d3;
-                const { nodes, links } = aiEngine.detectRelationships(ticker);
-                const width = svgRef.current.clientWidth || 800; const height = 550;
-                const svg = d3.select(svgRef.current); svg.selectAll("*").remove();
+                const { nodes, links } = graphData;
+                const width = svgRef.current.clientWidth || 800; const height = 600;
+                const svg = d3.select(svgRef.current);
+                
+                // Only clear if structure changes (handled by dependency array)
+                svg.selectAll("*").remove();
 
                 const defs = svg.append("defs");
-                
-                // Glow Filter
                 const filter = defs.append("filter").attr("id", "glow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
                 filter.append("feGaussianBlur").attr("stdDeviation", "4.5").attr("result", "blur");
                 const merge = filter.append("feMerge"); merge.append("feMergeNode").attr("in", "blur"); merge.append("feMergeNode").attr("in", "SourceGraphic");
                 
-                // Gradients for nodes
                 ["ihsg", "sector", "stock", "whale"].forEach(type => {
                     const g = defs.append("radialGradient").attr("id", `grad-${type}`);
                     if (type === 'ihsg' || type === 'stock') { 
@@ -1489,80 +1492,72 @@
                 });
 
                 const simulation = d3.forceSimulation(nodes)
-                    .alphaDecay(0.12) // Faster settling
-                    .velocityDecay(0.6) // Higher friction
+                    .alphaDecay(0.12)
+                    .velocityDecay(0.6)
                     .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.source.ring === 0 ? 240 : 180).strength(1))
-                    .force("charge", d3.forceManyBody().strength(-600)) // Weaker repulsion for stability
+                    .force("charge", d3.forceManyBody().strength(-600))
                     .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 6 + 40).iterations(3))
                     .force("center", d3.forceCenter(width / 2, height / 2));
 
-                // Anchor center nodes
-                nodes.forEach(d => {
-                    if (d.ring === 0) { d.fx = width / 2; d.fy = height / 2; }
-                });
+                nodes.forEach(d => { if (d.ring === 0) { d.fx = width / 2; d.fy = height / 2; } });
 
                 const container = svg.append("g");
-                
-                const link = container.append("g").selectAll("line").data(links).join("line")
+                const linkElements = container.append("g").selectAll("line").data(links).join("line")
                     .attr("stroke", d => d.source.type === 'WHALE' || d.target.type === 'WHALE' ? "rgba(245, 158, 11, 0.2)" : colors.LINK)
-                    .attr("stroke-width", 1.5)
-                    .attr("stroke-dasharray", "8,8")
-                    .style("opacity", 0.6);
+                    .attr("stroke-width", 1.5).attr("stroke-dasharray", "8,8").style("opacity", 0.6);
 
-                const particle = container.append("g").selectAll("circle").data(links).join("circle")
-                    .attr("r", 2.5)
-                    .attr("fill", d => d.source.type === 'WHALE' || d.target.type === 'WHALE' ? "#F59E0B" : colors.PULSE)
-                    .style("filter", "url(#glow)");
+                const particleElements = container.append("g").selectAll("circle").data(links).join("circle")
+                    .attr("r", 2.5).attr("fill", d => d.source.type === 'WHALE' || d.target.type === 'WHALE' ? "#F59E0B" : colors.PULSE).style("filter", "url(#glow)");
                 
-                const node = container.append("g").selectAll("g").data(nodes).join("g")
+                const nodeElements = container.append("g").selectAll("g").data(nodes).join("g")
                     .on("click", (e, d) => {
                         if (d.type === 'SECTOR') { setSelectedSector(d.id); setViewDepth('stocks'); }
                         else if (d.type === 'STOCK') { setSelectedStock(d.id); setViewDepth('whales'); }
                     })
                     .style("cursor", d => d.type === 'IHSG' ? 'default' : 'pointer')
                     .call(d3.drag()
-                        .on("start", (e, d) => { 
-                            if (!e.active) simulation.alphaTarget(0.3).restart(); 
-                            d.fx = d.x; d.fy = d.y; 
-                        })
-                        .on("drag", (e, d) => { 
-                            d.fx = e.x; d.fy = e.y; 
-                        })
-                        .on("end", (e, d) => { 
-                            if (!e.active) simulation.alphaTarget(0);
-                            if (d.ring !== 0) { d.fx = d.x; d.fy = d.y; } // Lock position after drag
-                        })
+                        .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                        .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+                        .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); if (d.ring !== 0) { d.fx = d.x; d.fy = d.y; } })
                     );
 
-                node.append("circle")
-                    .attr("r", d => Math.sqrt(d.val) * 6)
-                    .attr("fill", d => `url(#grad-${d.type.toLowerCase()})`)
+                nodeElements.append("circle").attr("r", d => Math.sqrt(d.val) * 6).attr("fill", d => `url(#grad-${d.type.toLowerCase()})`)
                     .attr("stroke", d => d.type === 'WHALE' ? "#F59E0B" : (d.type === 'SECTOR' ? "#6366F1" : "#00F0FF"))
-                    .attr("stroke-width", 2)
-                    .style("filter", d => d.id === ticker ? "url(#glow)" : "none");
+                    .attr("stroke-width", 2).style("filter", d => d.id === ticker ? "url(#glow)" : "none");
 
-                node.append("circle")
-                    .attr("r", d => Math.sqrt(d.val) * 6 - 2)
-                    .attr("fill", "transparent")
-                    .attr("stroke", "rgba(255,255,255,0.2)")
-                    .attr("stroke-width", 1)
-                    .attr("stroke-dasharray", d => `${Math.sqrt(d.val) * 10}, ${Math.sqrt(d.val) * 10}`);
+                nodeElements.append("circle").attr("r", d => Math.sqrt(d.val) * 6 - 2).attr("fill", "transparent").attr("stroke", "rgba(255,255,255,0.2)").attr("stroke-width", 1).attr("stroke-dasharray", d => `${Math.sqrt(d.val) * 10}, ${Math.sqrt(d.val) * 10}`);
 
-                const texts = node.append("g").attr("class", "labels");
+                const texts = nodeElements.append("g").attr("class", "labels");
                 texts.append("text").attr("dy", d => Math.sqrt(d.val) * 6 + 25).attr("text-anchor", "middle").attr("fill", "white").attr("font-size", d => d.type === 'IHSG' ? "14px" : "10px").attr("font-weight", "black").attr("class", "uppercase tracking-tighter").text(d => d.label);
 
-                node.append("text").attr("dy", d => -Math.sqrt(d.val) * 6 - 8).attr("text-anchor", "middle").attr("fill", d => (d.growth && d.growth.includes('+')) || (d.pct > 0) ? '#10B981' : (d.type === 'WHALE' ? '#F59E0B' : '#EF4444')).attr("font-size", "9px").attr("font-weight", "black").text(d => d.growth || (d.pct ? `${d.pct}%` : (d.desc || '')));
+                nodeElements.append("text").attr("class", "metric-text").attr("dy", d => -Math.sqrt(d.val) * 6 - 8).attr("text-anchor", "middle").attr("font-size", "9px").attr("font-weight", "black");
 
-                // Separate Animation Loop for Particles & Positional smoothness
                 const tickerLoop = d3.timer(() => {
                     const t = (Date.now() / 2400) % 1;
-                    link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-                    particle.attr("cx", d => d.source.x + (d.target.x - d.source.x) * t).attr("cy", d => d.source.y + (d.target.y - d.source.y) * t);
-                    node.attr("transform", d => `translate(${d.x},${d.y})`);
+                    linkElements.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                    particleElements.attr("cx", d => d.source.x + (d.target.x - d.source.x) * t).attr("cy", d => d.source.y + (d.target.y - d.source.y) * t);
+                    nodeElements.attr("transform", d => `translate(${d.x},${d.y})`);
                 });
 
                 return () => { simulation.stop(); tickerLoop.stop(); };
-            }, [ticker, aiEngine, viewDepth, stocks]);
+            }, [graphData, ticker, colors, viewDepth]);
+
+            // EFFECT 2: Data Updates (Only updates text/colors, no layout change)
+            useEffect(() => {
+                if (!svgRef.current || !window.d3) return;
+                const d3 = window.d3;
+                const svg = d3.select(svgRef.current);
+                
+                svg.selectAll(".metric-text").each(function(d) {
+                    const stockInfo = stocks.find(s => s.t === d.id);
+                    const growthVal = d.growth || (stockInfo ? `${stockInfo.pct.toFixed(2)}%` : d.desc || '');
+                    const isPositive = growthVal.includes('+') || (stockInfo && stockInfo.pct > 0);
+                    
+                    d3.select(this)
+                        .attr("fill", isPositive ? '#10B981' : (d.type === 'WHALE' ? '#F59E0B' : '#EF4444'))
+                        .text(growthVal);
+                });
+            }, [stocks]);
 
 
             return (
