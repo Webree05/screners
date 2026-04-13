@@ -1365,6 +1365,14 @@
                                         <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-full border border-success/20">Win Rate: 68%</span>
                                         <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20">Risk: Moderate</span>
                                     </div>
+                                </div>
+                            </Card>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const BubbleDragon = ({ ticker, stocks }) => {
             const svgRef = useRef();
             const containerRef = useRef();
@@ -1373,11 +1381,11 @@
             const [selectedStock, setSelectedStock] = useState(null);
 
             const colors = {
-                IHSG: "url(#grad-ihsg)", 
-                SECTOR: "url(#grad-sector)", 
-                STOCK: "url(#grad-ihsg)", 
-                WHALE: "url(#grad-whale)",
-                LINK: "rgba(0, 240, 255, 0.1)", 
+                IHSG: "#00F0FF", 
+                SECTOR: "#6366F1", 
+                STOCK: "#00F0FF", 
+                WHALE: "#F59E0B",
+                LINK: "rgba(0, 240, 255, 0.15)", 
                 PULSE: "#00F0FF"
             };
 
@@ -1415,39 +1423,39 @@
 
             const aiEngine = useMemo(() => ({
                 detectRelationships: (t) => {
-                    const nodes = []; const links = []; const centerX = 400; const centerY = 250;
+                    const nodes = []; const links = [];
                     
                     if (viewDepth === 'sectors') {
-                        nodes.push({ id: "IHSG", type: "IHSG", ring: 0, val: 120, label: "IHSG" });
+                        nodes.push({ id: "IHSG", type: "IHSG", ring: 0, val: 180, label: "IHSG CORRELATION" });
                         SECTORS_LIST.forEach((sec, i) => {
-                            nodes.push({ id: sec.id, type: "SECTOR", ring: 1, val: 50, label: sec.label, growth: sec.growth });
+                            nodes.push({ id: sec.id, type: "SECTOR", ring: 1, val: 75, label: sec.label, growth: sec.growth });
                             links.push({ source: "IHSG", target: sec.id });
                         });
                     } else if (viewDepth === 'stocks') {
-                        nodes.push({ id: selectedSector, type: "SECTOR", ring: 0, val: 100, label: selectedSector });
-                        const liquidStocks = stocks.filter(s => s.sector === selectedSector || s.t === "BBCA" || s.t === "BBRI").slice(0, 8);
+                        nodes.push({ id: selectedSector, type: "SECTOR", ring: 0, val: 150, label: selectedSector });
+                        const liquidStocks = stocks.filter(s => s.sector === selectedSector || s.t === "BBCA" || s.t === "BBRI").slice(0, 10);
                         liquidStocks.forEach((s) => {
-                            nodes.push({ id: s.t, type: "STOCK", ring: 1, val: 45, label: s.t, pct: s.pct });
+                            nodes.push({ id: s.t, type: "STOCK", ring: 1, val: 65, label: s.t, pct: s.pct });
                             links.push({ source: selectedSector, target: s.t });
                         });
                     } else if (viewDepth === 'whales') {
-                        nodes.push({ id: selectedStock, type: "STOCK", ring: 0, val: 100, label: selectedStock });
+                        nodes.push({ id: selectedStock, type: "STOCK", ring: 0, val: 150, label: selectedStock });
                         const group = Object.entries(investorIntel.groups).find(([name, g]) => g.tickers.includes(selectedStock));
                         if (group) {
-                            nodes.push({ id: group[1].parent, type: "WHALE", ring: 1, val: 80, label: group[1].parent });
+                            nodes.push({ id: group[1].parent, type: "WHALE", ring: 1, val: 110, label: group[1].parent, desc: "ULTIMATE HOLDER" });
                             links.push({ source: selectedStock, target: group[1].parent });
                         }
-                        investorIntel.whales.slice(0, 3).forEach(w => {
-                            nodes.push({ id: w.id, type: "WHALE", ring: 2, val: 35, label: w.id });
+                        investorIntel.whales.slice(0, 5).forEach(w => {
+                            nodes.push({ id: w.id, type: "WHALE", ring: 2, val: 55, label: w.id, desc: w.type });
                             links.push({ source: selectedStock, target: w.id });
                         });
                     }
                     return { nodes, links };
                 },
                 getAnalysis: () => {
-                    if (viewDepth === 'sectors') return "IHSG INTELLIGENCE: 14 Sectors scanned. Capital rotation detected in Property and Transport.";
-                    if (viewDepth === 'stocks') return `STOCKS DEEP-DIVE: Analyzing liquid assets in ${selectedSector}. Orderflow shows retail accumulation.`;
-                    return `WHALE FOOTPRINT: Mapping ultimate holders for ${selectedStock}. Institutional presence is dominant.`;
+                    if (viewDepth === 'sectors') return "IHSG DRAGON INTELLIGENCE: 14 Sectors scanned. Capital rotation detected in Real Estate and Financial services. Trend remains Bullish.";
+                    if (viewDepth === 'stocks') return `DEEP DIVE (${selectedSector}): Analyzing high-liquidity assets. Market makers footprint identified in top tickers.`;
+                    return `WHALE TRACKER (${selectedStock}): Mapping institutional ownership chain. Significant accumulation by global custodial banks identified.`;
                 }
             }), [viewDepth, selectedSector, selectedStock, stocks, investorIntel]);
 
@@ -1455,713 +1463,163 @@
                 if (!svgRef.current || !window.d3) return;
                 const d3 = window.d3;
                 const { nodes, links } = aiEngine.detectRelationships(ticker);
-                const width = svgRef.current.clientWidth || 800; const height = 500;
+                const width = svgRef.current.clientWidth || 800; const height = 550;
                 const svg = d3.select(svgRef.current); svg.selectAll("*").remove();
 
                 const defs = svg.append("defs");
+                
+                // Glow Filter
                 const filter = defs.append("filter").attr("id", "glow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
-                filter.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "blur");
+                filter.append("feGaussianBlur").attr("stdDeviation", "4.5").attr("result", "blur");
                 const merge = filter.append("feMerge"); merge.append("feMergeNode").attr("in", "blur"); merge.append("feMergeNode").attr("in", "SourceGraphic");
                 
-                ["ihsg", "sector", "whale"].forEach(type => {
+                // Gradients for nodes
+                ["ihsg", "sector", "stock", "whale"].forEach(type => {
                     const g = defs.append("radialGradient").attr("id", `grad-${type}`);
-                    if (type === 'ihsg') { g.append("stop").attr("offset", "0%").attr("stop-color", "#00F0FF"); g.append("stop").attr("offset", "100%").attr("stop-color", "#6C5CE7"); }
-                    else if (type === 'sector') { g.append("stop").attr("offset", "0%").attr("stop-color", "#1E293B"); g.append("stop").attr("offset", "100%").attr("stop-color", "#334155"); }
-                    else { g.append("stop").attr("offset", "0%").attr("stop-color", "#F59E0B"); g.append("stop").attr("offset", "100%").attr("stop-color", "#D97706"); }
+                    if (type === 'ihsg' || type === 'stock') { 
+                        g.append("stop").attr("offset", "0%").attr("stop-color", "#00F0FF").attr("stop-opacity", 0.4); 
+                        g.append("stop").attr("offset", "100%").attr("stop-color", "#00F0FF").attr("stop-opacity", 0.1); 
+                    } else if (type === 'sector') { 
+                        g.append("stop").attr("offset", "0%").attr("stop-color", "#6366F1").attr("stop-opacity", 0.4); 
+                        g.append("stop").attr("offset", "100%").attr("stop-color", "#6366F1").attr("stop-opacity", 0.05); 
+                    } else { 
+                        g.append("stop").attr("offset", "0%").attr("stop-color", "#F59E0B").attr("stop-opacity", 0.4); 
+                        g.append("stop").attr("offset", "100%").attr("stop-color", "#F59E0B").attr("stop-opacity", 0.1); 
+                    }
                 });
 
                 const simulation = d3.forceSimulation(nodes)
-                    .force("link", d3.forceLink(links).id(d => d.id).distance(180))
-                    .force("charge", d3.forceManyBody().strength(-1200))
-                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 7 + 10))
+                    .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.source.type === 'IHSG' ? 220 : 180))
+                    .force("charge", d3.forceManyBody().strength(-2000))
+                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 6 + 25))
                     .force("center", d3.forceCenter(width / 2, height / 2));
 
                 const container = svg.append("g");
-                const link = container.append("g").selectAll("line").data(links).join("line").attr("stroke", colors.LINK).attr("stroke-width", 1.5).attr("stroke-dasharray", "4,4");
-                const particle = container.append("g").selectAll("circle").data(links).join("circle").attr("r", 2).attr("fill", colors.PULSE).style("filter", "url(#glow)");
                 
+                // Render Links
+                const link = container.append("g").selectAll("line").data(links).join("line")
+                    .attr("stroke", d => d.source.type === 'WHALE' || d.target.type === 'WHALE' ? "rgba(245, 158, 11, 0.2)" : colors.LINK)
+                    .attr("stroke-width", 1.5)
+                    .attr("stroke-dasharray", "4,6")
+                    .style("opacity", 0.6);
+
+                // Animated Flow Particles
+                const particle = container.append("g").selectAll("circle").data(links).join("circle")
+                    .attr("r", 2.5)
+                    .attr("fill", d => d.source.type === 'WHALE' || d.target.type === 'WHALE' ? "#F59E0B" : colors.PULSE)
+                    .style("filter", "url(#glow)");
+                
+                // Render Nodes
                 const node = container.append("g").selectAll("g").data(nodes).join("g")
                     .on("click", (e, d) => {
                         if (d.type === 'SECTOR') { setSelectedSector(d.id); setViewDepth('stocks'); }
                         else if (d.type === 'STOCK') { setSelectedStock(d.id); setViewDepth('whales'); }
+                        else if (d.type === 'WHALE') { /* Maybe show owner details? */ }
                     })
                     .style("cursor", d => d.type === 'IHSG' ? 'default' : 'pointer')
-                    .call(d3.drag().on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }).on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; }).on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+                    .call(d3.drag()
+                        .on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                        .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+                        .on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+                    );
 
-                node.append("circle").attr("r", d => Math.sqrt(d.val) * 7).attr("fill", d => colors[d.type] || colors.SECTOR).attr("stroke", "rgba(255,255,255,0.1)").attr("stroke-width", 2).attr("fill-opacity", 0.7).style("filter", d => d.type === "IHSG" ? "url(#glow)" : "none");
-                node.append("text").attr("dy", d => Math.sqrt(d.val) * 7 + 20).attr("text-anchor", "middle").attr("fill", "white").attr("font-size", "10px").attr("font-weight", "black").attr("class", "uppercase tracking-tighter").text(d => d.label);
+                // Node Circles (Multi-layered Glass Effect)
+                node.append("circle")
+                    .attr("r", d => Math.sqrt(d.val) * 6)
+                    .attr("fill", d => `url(#grad-${d.type.toLowerCase()})`)
+                    .attr("stroke", d => d.type === 'WHALE' ? "#F59E0B" : (d.type === 'SECTOR' ? "#6366F1" : "#00F0FF"))
+                    .attr("stroke-width", 2)
+                    .style("filter", d => d.id === ticker ? "url(#glow)" : "none");
+
+                // Hover Shine Effect
+                node.append("circle")
+                    .attr("r", d => Math.sqrt(d.val) * 6 - 2)
+                    .attr("fill", "transparent")
+                    .attr("stroke", "rgba(255,255,255,0.2)")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", d => `${Math.sqrt(d.val) * 10}, ${Math.sqrt(d.val) * 10}`);
+
+                // Labels
+                const texts = node.append("g").attr("class", "labels");
                 
-                if (viewDepth === 'sectors' || viewDepth === 'stocks') {
-                    node.append("text").attr("dy", d => -Math.sqrt(d.val) * 7 - 5).attr("text-anchor", "middle").attr("fill", d => (d.growth && d.growth.includes('+')) || (d.pct > 0) ? '#10B981' : '#EF4444').attr("font-size", "8px").attr("font-weight", "bold").text(d => d.growth || (d.pct ? `${d.pct}%` : ''));
-                }
+                texts.append("text")
+                    .attr("dy", d => Math.sqrt(d.val) * 6 + 25)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "white")
+                    .attr("font-size", d => d.type === 'IHSG' ? "14px" : "10px")
+                    .attr("font-weight", "black")
+                    .attr("class", "uppercase tracking-tighter")
+                    .text(d => d.label);
+
+                // Data Metrics (Growth/Pct)
+                node.append("text")
+                    .attr("dy", d => -Math.sqrt(d.val) * 6 - 8)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", d => (d.growth && d.growth.includes('+')) || (d.pct > 0) ? '#10B981' : (d.type === 'WHALE' ? '#F59E0B' : '#EF4444'))
+                    .attr("font-size", "9px")
+                    .attr("font-weight", "black")
+                    .text(d => d.growth || (d.pct ? `${d.pct}%` : (d.desc || '')));
 
                 simulation.on("tick", () => {
                     link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
                     node.attr("transform", d => `translate(${d.x},${d.y})`);
-                    const t = (Date.now() / 1500) % 1;
+                    const t = (Date.now() / 2000) % 1;
                     particle.attr("cx", d => d.source.x + (d.target.x - d.source.x) * t).attr("cy", d => d.source.y + (d.target.y - d.source.y) * t);
                 });
+
                 return () => simulation.stop();
-            }, [ticker, aiEngine, viewDepth]);
+            }, [ticker, aiEngine, viewDepth, stocks]);
 
             return (
-                <div ref={containerRef} className="relative w-full h-[550px] bg-[#05080F] overflow-hidden rounded-[2rem] border border-slate-800 shadow-inner">
-                    <div className="absolute top-6 left-6 z-20 flex flex-col gap-2">
-                         <div className="flex items-center gap-2 p-3 glass-panel rounded-xl border border-white/10 bg-slate-900/60 transition-all">
-                             <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] italic">Dragon Intelligence Lock</h4>
-                             <div className="flex gap-2 ml-4">
-                                 <button onClick={() => setViewDepth('sectors')} className={`px-3 py-1 text-[8px] font-black rounded-lg border transition-all ${viewDepth === 'sectors' ? 'bg-primary text-slate-900 border-primary' : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-white'}`}>SECTORS</button>
-                                 {selectedSector && <button onClick={() => setViewDepth('stocks')} className={`px-3 py-1 text-[8px] font-black rounded-lg border transition-all ${viewDepth === 'stocks' ? 'bg-primary text-slate-900 border-primary' : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-white'}`}>{selectedSector}</button>}
-                                 {selectedStock && <button className="px-3 py-1 text-[8px] font-black rounded-lg border bg-slate-800 text-primary border-primary/20">{selectedStock}</button>}
-                             </div>
-                         </div>
-                         <div className="p-3 glass-panel rounded-xl border border-white/5 bg-slate-900/40">
-                             <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                                 <div className="flex items-center gap-2 text-[7px] font-black text-slate-400"><div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_#00F0FF]"></div> INDEX</div>
-                                 <div className="flex items-center gap-2 text-[7px] font-black text-slate-400"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div> SECTOR</div>
-                                 <div className="flex items-center gap-2 text-[7px] font-black text-slate-400"><div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> WHALES</div>
-                                 <div className="flex items-center gap-2 text-[7px] font-black text-slate-400"><div className="w-1.5 h-0.5 bg-primary/40"></div> FLOW</div>
-                             </div>
-                         </div>
-                    </div>
-                    <svg ref={svgRef} className="w-full h-full" />
-                    <div className="absolute bottom-6 left-6 right-6 p-5 glass-panel rounded-[1.5rem] border border-primary/20 bg-primary/5 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex items-center gap-3 mb-1"><div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div><span className="text-[10px] font-black text-primary uppercase tracking-widest italic leading-none">Intelligence Depth View</span></div>
-                        <p className="text-[12px] font-bold text-slate-200 leading-relaxed italic border-l-2 border-primary/20 pl-4 py-1">{aiEngine.getAnalysis()}</p>
-                    </div>
-                </div>
-            );
-        };
-
-        const CatchTheDragonView = ({ stocks, watchlist, toggleWatchlist, activeTicker, setActiveTicker }) => {
-            if (!stocks || stocks.length === 0) return null;
-            const stock = (activeTicker === 'IHSG') ? { t: "IHSG", ap: 7240, sector: "COMPOSITE" } : (stocks.find(s => s.t === activeTicker) || stocks[0]);
-            
-            const generateDragonSignal = useCallback((ticker) => {
-                let hash = 0; for (let i = 0; i < ticker.length; i++) hash = ((hash << 5) - hash) + ticker.charCodeAt(i);
-                const seed = Math.abs(hash); const isIHSG = ticker === 'IHSG';
-                const freeFloat = isIHSG ? "100.0" : (5 + (seed % 55)).toFixed(1);
-                const avg5dVal = isIHSG ? "12.4 Trillion" : ((seed % 500) + 200).toFixed(1) + " Billion";
-                const buyPct = (45 + (seed % 25)); const sellPct = 100 - buyPct;
-                const price = stock.ap || 1000;
-                const s1 = Math.round(price * 0.975); const s2 = Math.round(price * 0.95);
-                const r1 = Math.round(price * 1.025); const r2 = Math.round(price * 1.05);
-                return { freeFloat, avg5dVal, buyPct, sellPct, s1, s2, r1, r2, entry: s1, tp: r1, sl: Math.round(s1 * 0.98), rr: "1:2.5", isBullish: seed % 2 === 0, volume: seed % 1000 + 500, value: seed % 100 + 10, netFlow: (seed % 40) - 15 };
-            }, [stock.ap]);
-            const signal = generateDragonSignal(activeTicker);
-
-            return (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                    <div className="bg-[#0B121E] rounded-[3rem] border border-slate-800 shadow-2xl p-10 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -mr-48 -mt-48 animate-pulse"></div>
-                        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
-                            <div>
-                                <h1 className="text-5xl font-black text-white italic tracking-tighter uppercase leading-none">Catch the <span className="text-primary italic drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]">Dragon</span></h1>
-                                <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.4em] mt-4 border-l-4 border-primary pl-4 italic">Algorithmic Intelligence Pulse v4.9 Alpha</p>
-                            </div>
-                            <div className="w-full lg:w-96 glass-panel p-5 rounded-[2rem] border border-white/5 bg-slate-900/40">
-                                <label className="text-[9px] font-black text-primary uppercase tracking-[0.2em] block mb-3 px-1 italic">Symbol Intel Lock</label>
-                                <div className="flex gap-2">
-                                    <select value={activeTicker} onChange={(e) => setActiveTicker(e.target.value)} className="flex-1 bg-slate-950/80 border border-slate-800 text-white px-5 py-4 rounded-2xl focus:border-primary outline-none font-black text-sm tracking-widest transition-all appearance-none cursor-pointer">
-                                        <option value="IHSG">IHSG (COMPOSITE INDEX)</option>
-                                        {stocks.filter(s => s.t !== 'IHSG').map(s => <option key={s.t} value={s.t}>{s.t} - {s.sector}</option>)}
-                                    </select>
-                                    <button onClick={() => toggleWatchlist(activeTicker)} className={`px-6 rounded-2xl border transition-all ${watchlist.includes(activeTicker) ? 'bg-primary/20 border-primary text-primary shadow-[0_0_20px_rgba(0,240,255,0.4)]' : 'bg-slate-950/80 border-slate-800 text-slate-600'}`}>
-                                        <Icon name="star" size={24} className={watchlist.includes(activeTicker) ? 'fill-current' : ''} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mb-10 rounded-[2.5rem] border border-slate-800 shadow-3xl overflow-hidden"><BubbleDragon ticker={activeTicker} stocks={stocks} /></div>
-                        <div className="mb-10 h-[650px] bg-slate-950 rounded-[2.5rem] border border-slate-800 shadow-3xl overflow-hidden relative">
-                            <div className="p-8 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between">
-                                <div className="flex items-center gap-4"><Icon name="activity" className="text-primary animate-pulse" /><h3 className="text-sm font-black text-white uppercase tracking-widest leading-none italic">Market Depth Flow Chart</h3></div>
-                                <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-success animate-pulse"></div><span className="text-[10px] font-black text-success uppercase tracking-widest italic">Live Data Feed Active</span></div>
-                            </div>
-                            <div className="p-8 h-[550px]"><ChartWidget ticker={activeTicker} /></div>
-                        </div>
-                        <div className="mb-10"><DragonValuationChart ticker={activeTicker} stocks={stocks} /></div>
-                        <div className="overflow-hidden rounded-[2.5rem] border border-slate-800 bg-slate-900/20 backdrop-blur-xl">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-900/80"><tr className="border-b border-slate-800"><th className="py-6 px-8 text-[11px] font-black text-slate-500 uppercase tracking-widest">Logic Parameter Layer</th><th className="py-6 px-8 text-[11px] font-black text-slate-500 uppercase tracking-widest">Real-Time Data Output</th><th className="py-6 px-8 text-[11px] font-black text-slate-500 uppercase tracking-widest hidden md:table-cell">Algorithmic Formula Alpha</th></tr></thead>
-                                <tbody className="text-sm font-black text-slate-400">
-                                    <tr className="border-b border-white/5 hover:bg-white/5 transition-all"><td className="py-8 px-8 text-white text-[13px] italic uppercase tracking-tight">1. Supply & Float %</td><td className="py-8 px-8"><span className="text-primary text-2xl tracking-tighter">{stock.t}</span><span className="text-[11px] ml-4 text-slate-500 font-bold uppercase">FLOAT: {signal.freeFloat}%</span></td><td className="py-8 px-8 hidden md:table-cell text-[10px] text-slate-600 font-bold italic">FF% = (PUBLIC_SHARES / TOTAL_SHARES) × 100</td></tr>
-                                    <tr className="border-b border-white/5 hover:bg-white/5 transition-all"><td className="py-8 px-8 text-white text-[13px] italic uppercase tracking-tight">2. Done Signal Matrix</td><td className="py-8 px-8"><div className="flex items-center gap-6"><span className="text-2xl text-white tracking-widest">Rp{stock.ap.toLocaleString()}</span><div className={`px-5 py-2 rounded-xl text-slate-950 text-[11px] font-black tracking-widest ${signal.buyPct > 50 ? 'bg-success shadow-[0_0_20px_rgba(34,197,94,0.3)]' : 'bg-danger shadow-[0_0_20px_rgba(239,68,68,0.3)]'}`}>{signal.buyPct > 50 ? `STRONG BUY (${signal.buyPct}%)` : `SELL ZONE (${signal.sellPct}%)`}</div></div></td><td className="py-8 px-8 hidden md:table-cell text-[10px] text-slate-600 font-bold italic">BUY_INTENSITY = (BUY_VOL / TOTAL_VOL) × 100</td></tr>
-                                    <tr className="border-b border-white/5 hover:bg-white/5 transition-all"><td className="py-8 px-8 text-white text-[13px] italic uppercase tracking-tight">3. Support & Pivot R</td><td className="py-8 px-8"><div className="grid grid-cols-2 gap-8"><div><div className="text-[9px] text-slate-600 mb-1 italic">SUPPORT_LAYER</div><div className="text-danger tracking-widest">S1: {signal.s1} | S2: {signal.s2}</div></div><div><div className="text-[9px] text-slate-600 mb-1 italic">RESIST_LAYER</div><div className="text-success tracking-widest">R1: {signal.r1} | R2: {signal.r2}</div></div></div></td><td className="py-8 px-8 hidden md:table-cell text-[10px] text-slate-600 font-bold italic">RR_RATIO = ΔTP / ΔSL | ALPHA V.7 CORE ENGINE</td></tr>
-                                    <tr className="border-white/5 hover:bg-white/5 transition-all"><td className="py-8 px-8 text-white text-[13px] italic uppercase tracking-tight">4. Execution Strategy</td><td className="py-8 px-8"><div className="grid grid-cols-3 gap-3"><div className="bg-success/10 p-4 rounded-2xl border border-success/20"><div className="text-[8px] text-success mb-1">ENTRY</div><div className="text-white">Rp{signal.entry}</div></div><div className="bg-primary/10 p-4 rounded-2xl border border-primary/20"><div className="text-[8px] text-primary mb-1">TARGET</div><div className="text-white">Rp{signal.tp}</div></div><div className="bg-danger/10 p-4 rounded-2xl border border-danger/20"><div className="text-[8px] text-danger mb-1">STOPLOSS</div><div className="text-white">Rp{signal.sl}</div></div></div></td><td className="py-8 px-8 hidden md:table-cell text-[10px] text-slate-600 font-bold italic">STRAT = [ENTRY @ S1_B] -> [TARGET @ R1_B]</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const PortfolioView = ({ portfolio, setPortfolio, stocks }) => {
-            const [newAsset, setNewAsset] = useState({ ticker: "BBCA", buyPrice: "", buyLot: "", sellPrice: "", sellLot: "" });
-
-            const addToPortfolio = () => {
-                if (!newAsset.buyPrice || !newAsset.buyLot) return;
-                const entry = { ...newAsset, id: Date.now(), buyPrice: Number(newAsset.buyPrice), buyLot: Number(newAsset.buyLot), sellPrice: Number(newAsset.sellPrice || 0), sellLot: Number(newAsset.sellLot || 0) };
-                const updated = [...portfolio, entry];
-                setPortfolio(updated);
-                localStorage.setItem("portfolio", JSON.stringify(updated));
-            };
-
-            const removePortfolioItem = (id) => {
-                const updated = portfolio.filter(item => item.id !== id);
-                setPortfolio(updated);
-                localStorage.setItem("portfolio", JSON.stringify(updated));
-            };
-
-            const totalReturn = portfolio.reduce((acc, item) => {
-                const currentPrice = stocks.find(s => s.t === item.ticker)?.ap || item.buyPrice;
-                const buyValue = item.buyPrice * item.buyLot * 100;
-                const currentVal = currentPrice * item.buyLot * 100;
-                const realizedVal = item.sellPrice * item.sellLot * 100;
-                return acc + (currentPrice - item.buyPrice) * item.buyLot * 100;
-            }, 0);
-
-            return (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <Card title="Daftar Portofolio" className="lg:col-span-2">
-                            <div className="space-y-4">
-                                {portfolio.map(item => {
-                                    const currentStock = stocks.find(s => s.t === item.ticker);
-                                    const currentPrice = currentStock?.ap || item.buyPrice;
-                                    const profit = (currentPrice - item.buyPrice) * item.buyLot * 100;
-                                    const profitPct = ((currentPrice - item.buyPrice) / item.buyPrice) * 100;
-                                    return (
-                                        <div key={item.id} className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-wrap justify-between items-center gap-4 group">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center font-black text-white">{item.ticker}</div>
-                                                <div>
-                                                    <div className="text-xs text-slate-500 font-bold uppercase tracking-tighter">Posisi</div>
-                                                    <div className="text-sm font-black text-slate-100">{item.buyLot} Lot @ {item.buyPrice}</div>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-xs text-slate-500 font-bold uppercase tracking-tighter">P/L Estimate</div>
-                                                <div className={`text-md font-black ${profit >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                    Rp{profit.toLocaleString()} ({profitPct.toFixed(2)}%)
-                                                </div>
-                                            </div>
-                                            <button onClick={() => removePortfolioItem(item.id)} className="p-2 text-slate-600 hover:text-danger hover:bg-danger/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Icon name="trash-2" className="w-4 h-4" /></button>
-                                        </div>
-                                    );
-                                })}
-                                {portfolio.length === 0 && <div className="py-12 text-center text-slate-500 font-medium">Belum ada aset dalam portofolio.</div>}
-                            </div>
-                        </Card>
-                        <div className="space-y-6">
-                            <Card title="Tambah Aset" icon={<Icon name="plus" />}>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="col-span-2">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Pilih Saham</label>
-                                            <select value={newAsset.ticker} onChange={(e) => setNewAsset({...newAsset, ticker: e.target.value})} className="w-full bg-slate-800 border-none text-white p-2.5 rounded-xl font-bold">
-                                                {stocks.map(s => <option key={s.t} value={s.t}>{s.t}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Harga Beli</label>
-                                            <input type="number" value={newAsset.buyPrice} onChange={(e) => setNewAsset({...newAsset, buyPrice: e.target.value})} className="w-full bg-slate-800 border-none text-white p-2.5 rounded-xl" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Jumlah Lot</label>
-                                            <input type="number" value={newAsset.buyLot} onChange={(e) => setNewAsset({...newAsset, buyLot: e.target.value})} className="w-full bg-slate-800 border-none text-white p-2.5 rounded-xl" />
-                                        </div>
-                                    </div>
-                                    <button onClick={addToPortfolio} className="w-full py-3 bg-primary text-slate-900 font-black rounded-xl hover:opacity-90 transition-all">TAMBAH ASET</button>
-                                </div>
-                            </Card>
-                            <Card title="AI Portfolio Summary">
-                                <div className="text-center py-4">
-                                    <div className="text-[10px] text-slate-500 font-black uppercase mb-1">Estimated Gain/Loss</div>
-                                    <div className={`text-2xl font-black ${totalReturn >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        Rp{totalReturn.toLocaleString('id-ID')}
-                                    </div>
-                                </div>
-                            </Card>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const BrokerSummaryView = ({ stocks, watchlist, activeTicker, setActiveTicker }) => {
-            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-            
-            const data = useMemo(() => {
-                const brokers = ["PD", "YP", "CC", "ZP", "NI", "BR", "DR", "DH", "MG", "GR", "AK", "BK", "CS", "KZ", "DX", "LG", "AZ", "OD", "KK", "XA"];
-                return brokers.slice(0, 10).map(code => {
-                    const buyVal = Math.random() * 50;
-                    const sellVal = Math.random() * 40;
-                    return {
-                        code,
-                        buyVal: buyVal.toFixed(1) + "B",
-                        sellVal: sellVal.toFixed(1) + "B",
-                        buyLot: Math.floor(buyVal * 1000),
-                        sellLot: Math.floor(sellVal * 1000),
-                        buyAvg: Math.round(5000 + Math.random() * 200),
-                        sellAvg: Math.round(5000 + Math.random() * 200),
-                        net: (buyVal - sellVal).toFixed(2)
-                    };
-                }).sort((a,b) => b.net - a.net);
-            }, [activeTicker]);
-
-            return (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <BubbleDragon ticker={activeTicker} stocks={stocks} />
+                <div ref={containerRef} className="relative w-full h-[600px] bg-[#05080F] overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl group/dragon">
+                    {/* Atmospheric Overlay */}
+                    <div className="absolute inset-0 bg-radial-at-t from-primary/5 via-transparent to-transparent opacity-50 pointer-events-none"></div>
                     
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        <div className="lg:col-span-1">
-                            <Card title="Broker Filter" icon={<Icon name="repeat" />}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Pilih Emiten</label>
-                                        <select value={activeTicker} onChange={(e) => setActiveTicker(e.target.value)} className="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-xl outline-none font-bold">
-                                            {stocks.map(s => <option key={s.t} value={s.t}>{s.t}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Set Tanggal Analysis</label>
-                                        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700 text-white p-2 rounded-xl outline-none font-bold" />
-                                    </div>
-                                </div>
-                            </Card>
-                        </div>
-                        
-                        <div className="lg:col-span-3">
-                            <Card title={"Broker Summary (Net Analysis) - " + activeTicker}>
-                                <div className="overflow-x-auto custom-scrollbar">
-                                    <table className="w-full text-left border-separate border-spacing-y-2">
-                                        <thead>
-                                            <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                <th className="pb-4 pl-4">Broker</th>
-                                                <th className="pb-4">Buy Value</th>
-                                                <th className="pb-4">Sell Value</th>
-                                                <th className="pb-4">Avg Buy</th>
-                                                <th className="pb-4">Avg Sell</th>
-                                                <th className="pb-4 pr-4 text-right">Net Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {data.map((b, i) => (
-                                                <tr key={i} className="bg-slate-900/40 hover:bg-slate-800/80 transition-all rounded-xl border border-slate-800">
-                                                    <td className="py-3 px-4 rounded-l-xl border-y border-l border-slate-800">
-                                                        <span className={`font-black tracking-widest ${Number(b.net) > 0 ? 'text-primary' : 'text-danger'}`}>{b.code}</span>
-                                                    </td>
-                                                    <td className="py-3 font-bold text-slate-300">{b.buyVal}</td>
-                                                    <td className="py-3 font-bold text-slate-300">{b.sellVal}</td>
-                                                    <td className="py-3 font-bold text-slate-300">{b.buyAvg}</td>
-                                                    <td className="py-3 font-bold text-slate-300">{b.sellAvg}</td>
-                                                    <td className={`py-3 px-4 text-right font-black rounded-r-xl border-y border-r border-slate-800 ${Number(b.net) > 0 ? 'text-success' : 'text-danger'}`}>
-                                                        {Number(b.net) > 0 ? '+' : ''}{b.net}B
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const StreamView = ({ stocks, activeTicker }) => {
-            const stock = (stocks && stocks.find(s => s.t === activeTicker)) || (stocks && stocks[0]) || { t: "IDX", ap: 0, pct: 0 };
-            
-            const [streamItems, setStreamItems] = useState([
-                { id: 1, user: "ProTrader_IDX", text: `Akumulasi masif di $${stock.t}. Orderflow nunjukin bandar lagi tarik barang halus.`, time: "2m ago", type: "bullish", avatar: "P" },
-                { id: 2, user: "AI_Signal_Bot", text: "BREAKOUT DETECTED: Price volume trend crossing baseline. Momentum is high.", time: "5m ago", type: "system", avatar: "A" },
-                { id: 3, user: "MarketWhale", text: `IHSG lagi konsolidasi, tapi $${stock.t} tetep kuat di support kuatnya. Cakep!`, time: "8m ago", type: "bullish", avatar: "M" },
-                { id: 4, user: "ValueHunter", text: "EPS growth tahun ini diprediksi naik 15%. Target price masih jauh diatas.", time: "12m ago", type: "system", avatar: "V" }
-            ]);
-
-            const blockTrades = [
-                { ticker: "BBCA", price: 10450, lot: "12.5K", type: "BUY", time: "10:45:02" },
-                { ticker: stock.t, price: stock.ap || 0, lot: "8.2K", type: "BUY", time: "10:44:55" },
-                { ticker: "TLKM", price: 3210, lot: "44K", type: "SELL", time: "10:44:30" },
-                { ticker: "GOTO", price: 54, lot: "150K", type: "BUY", time: "10:44:12" },
-                { ticker: stock.t, price: (stock.ap || 2) - 2, lot: "5.1K", type: "BUY", time: "10:43:50" }
-            ];
-
-            return (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        
-                        {/* Feed Utama */}
-                        <div className="lg:col-span-2 space-y-6">
-                            <Card title="AI Social Pulse (Live Feed)" icon={<Icon name="rss" />}>
-                                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                                    <div className="bg-primary/5 p-4 rounded-2xl border border-primary/20 mb-6 flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center font-black text-slate-900">AI</div>
-                                        <div>
-                                            <div className="text-xs font-black text-primary uppercase tracking-widest mb-1">DEX AI Master Perspective</div>
-                                            <p className="text-sm text-slate-300 leading-relaxed italic">"Analisis real-time mendeteksi anomali volume di $${stock.t}. Tekanan beli meningkat 24% dalam 15 menit terakhir. Potensi markup harga ke resisten selanjutnya di Rp{Math.round(stock.ap * 1.05)} sangat tinggi."</p>
-                                        </div>
-                                    </div>
-                                    
-                                    {streamItems.map(item => (
-                                        <div key={item.id} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl hover:border-slate-700 transition-all group">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-white ${item.type === 'bullish' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'}`}>{item.avatar}</div>
-                                                    <div>
-                                                        <h4 className="text-sm font-black text-slate-200">{item.user}</h4>
-                                                        <span className="text-[10px] text-slate-500 font-bold uppercase">{item.time}</span>
-                                                    </div>
-                                                </div>
-                                                <Icon name={item.type === 'bullish' ? "trending-up" : "activity"} className={`w-4 h-4 ${item.type === 'bullish' ? 'text-success' : 'text-primary'}`} />
-                                            </div>
-                                            <p className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors leading-relaxed">{item.text}</p>
-                                            <div className="mt-3 flex gap-3">
-                                                <button className="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-1"><Icon name="heart" className="w-3 h-3" /> 24</button>
-                                                <button className="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-1"><Icon name="message-circle" className="w-3 h-3" /> 8</button>
-                                                <button className="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-1"><Icon name="share-2" className="w-3 h-3" /> Share</button>
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    <button className="w-full py-3 bg-slate-800/50 hover:bg-slate-800 text-slate-500 hover:text-slate-300 font-bold text-xs rounded-xl border border-dashed border-slate-700 transition-all uppercase tracking-widest mt-4">Load older discussions...</button>
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Sidebar Stream */}
-                        <div className="space-y-6">
-                            <Card title="Live Block Trade Tape" icon={<Icon name="zap" />}>
-                                <div className="space-y-3">
-                                    <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 px-1">Institutional Order Flow</div>
-                                    {blockTrades.map((bt, i) => (
-                                        <div key={i} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800/80 rounded-xl hover:bg-slate-800 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-1 h-8 rounded-full ${bt.type === 'BUY' ? 'bg-success' : 'bg-danger'}`}></div>
-                                                <div>
-                                                    <div className="text-[11px] font-black text-white tracking-widest">${bt.ticker}</div>
-                                                    <div className="text-[10px] text-slate-500 font-bold">{bt.time}</div>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-[11px] font-black text-slate-200">Rp{bt.price.toLocaleString()}</div>
-                                                <div className={`text-[10px] font-black ${bt.type === 'BUY' ? 'text-success' : 'text-danger'}`}>{bt.lot} LOT {bt.type}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-[10px] text-slate-500 font-black uppercase">Net Sentiment</span>
-                                            <span className="text-xs font-black text-success">BULISH (74%)</span>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden flex">
-                                            <div className="bg-success h-full transition-all duration-1000" style={{ width: '74%' }}></div>
-                                            <div className="bg-danger h-full transition-all duration-1000" style={{ width: '26%' }}></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
-
-                            <Card title="Breaking Headlines" icon={<Icon name="globe" />}>
-                                <div className="space-y-4">
-                                    {[
-                                        { title: "IDX COMPOSITE Reclaims 7,200 level amid foreign inflows.", time: "10m ago" },
-                                        { title: "Bursa Efek Indonesia pantau volatilitas saham IPO baru.", time: "25m ago" },
-                                        { title: "Suku bunga tetap, sektor perbankan makin atraktif.", time: "44m ago" }
-                                    ].map((news, i) => (
-                                        <div key={i} className="group cursor-pointer">
-                                            <h5 className="text-xs font-bold text-slate-300 leading-snug group-hover:text-primary transition-colors">{news.title}</h5>
-                                            <span className="text-[9px] text-slate-500 font-medium uppercase mt-1 block">{news.time}</span>
-                                        </div>
-                                    ))}
-                                    <button className="w-full mt-2 text-[10px] font-bold text-primary hover:underline transition-all">VIEW ALL NEWS PORTAL →</button>
-                                </div>
-                            </Card>
-                        </div>
-
-                    </div>
-                </div>
-            );
-        };
-
-        const EipoView = () => {
-            const ipos = [
-                { ticker: "DAAZ", date: "4 Apr 2026", price: 800, sector: "Technology", score: 88, status: "Undervalued" },
-                { ticker: "HELI", date: "15 Apr 2026", price: 450, sector: "Energy", score: 72, status: "Fair Value" },
-                { ticker: "NAIK", date: "22 Apr 2026", price: 120, sector: "Finance", score: 45, status: "Overvalued" }
-            ];
-            return (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <Card title="E-IPO New Listings (Indonesia Exchange)" icon={<Icon name="shopping-bag" />}>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {ipos.map(ipo => (
-                                <div key={ipo.ticker} className="p-6 glass-panel rounded-3xl border border-slate-700/50 relative overflow-hidden group hover:border-primary/50 transition-all">
-                                    <div className="absolute top-0 right-0 p-4 font-black text-slate-800 text-4xl -rotate-12 group-hover:text-primary/10 transition-colors">{ipo.ticker}</div>
-                                    <div className="flex items-center gap-3 mb-6 relative z-10">
-                                        <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center font-black text-[#0F172A]">{ipo.ticker[0]}</div>
-                                        <div>
-                                            <h3 className="text-xl font-black text-white px-1">{ipo.ticker}</h3>
-                                            <span className="text-[10px] text-slate-500 font-bold uppercase px-1 tracking-widest">{ipo.sector}</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4 mb-6">
-                                        <div className="flex justify-between text-sm"><span className="text-slate-500 font-bold">Listing Date</span><span className="text-white font-black tracking-tight">{ipo.date}</span></div>
-                                        <div className="flex justify-between text-sm"><span className="text-slate-500 font-bold">Offer Price</span><span className="text-white font-black tracking-tight">Rp{ipo.price}</span></div>
-                                        <div className="flex justify-between text-sm items-center"><span className="text-slate-500 font-bold">AI Health Score</span><span className="text-lg font-black text-primary">{ipo.score}/100</span></div>
-                                    </div>
-                                    <div className={`py-2 px-4 rounded-xl text-center text-xs font-black uppercase tracking-widest border border-white/5 ${ipo.status === 'Undervalued' ? 'bg-success/20 text-success' : (ipo.status === 'Overvalued' ? 'bg-danger/20 text-danger' : 'bg-warning/20 text-warning')}`}>
-                                        {ipo.status}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
-                </div>
-            );
-        };
-
-        const ValuationSubChart = ({ type, quarters, mean, sd, current }) => {
-            const chartRef = useRef(null);
-            
-            useEffect(() => {
-                if (!chartRef.current || !quarters) return;
-                const container = chartRef.current;
-                const margin = { top: 20, right: 70, bottom: 40, left: 30 };
-                const width = container.clientWidth - margin.left - margin.right;
-                const height = 300 - margin.top - margin.bottom;
-
-                d3.select(container).selectAll("*").remove();
-                const svg = d3.select(container)
-                    .append("svg")
-                    .attr("width", width + margin.left + margin.right)
-                    .attr("height", height + margin.top + margin.bottom)
-                    .append("g")
-                    .attr("transform", `translate(${margin.left},${margin.top})`);
-
-                const x = d3.scalePoint()
-                    .domain(quarters.map(d => d.name))
-                    .range([0, width]);
-
-                const activeValues = quarters.map(d => type === 'PER' ? d.per : d.pbv);
-                const yMin = Math.min(d3.min(activeValues), mean - 2.5 * sd);
-                const yMax = Math.max(d3.max(activeValues), mean + 2.5 * sd);
-
-                const y = d3.scaleLinear()
-                    .domain([yMin * 0.85, yMax * 1.15])
-                    .range([height, 0]);
-
-                // SD Bands
-                const bands = [
-                    { val: mean + 2 * sd, label: "+2 SD", color: "#EF4444" },
-                    { val: mean + 1 * sd, label: "+1 SD", color: "#F59E0B" },
-                    { val: mean, label: "Mean", color: "#E2E8F0" },
-                    { val: mean - 1 * sd, label: "-1 SD", color: "#10B981" },
-                    { val: mean - 2 * sd, label: "-2 SD", color: "#3B82F6" }
-                ];
-
-                bands.forEach(band => {
-                    svg.append("line")
-                        .attr("x1", 0).attr("x2", width)
-                        .attr("y1", y(band.val)).attr("y2", y(band.val))
-                        .attr("stroke", band.color)
-                        .attr("stroke-dasharray", band.label === "Mean" ? "0" : "3,3")
-                        .attr("opacity", 0.3)
-                        .attr("stroke-width", 1);
-
-                    svg.append("text")
-                        .attr("x", width + 5).attr("y", y(band.val))
-                        .attr("dy", "0.32em")
-                        .attr("fill", band.color)
-                        .attr("font-size", "8px").attr("font-weight", "bold")
-                        .text(`${band.label}: ${band.val.toFixed(2)}`);
-                });
-
-                // Line & Area
-                const area = d3.area()
-                    .x(d => x(d.name))
-                    .y0(height)
-                    .y1(d => y(type === 'PER' ? d.per : d.pbv))
-                    .curve(d3.curveMonotoneX);
-
-                const line = d3.line()
-                    .x(d => x(d.name))
-                    .y(d => y(type === 'PER' ? d.per : d.pbv))
-                    .curve(d3.curveMonotoneX);
-
-                const gradId = `grad-${type}`;
-                const defs = svg.append("defs");
-                const grad = defs.append("linearGradient").attr("id", gradId).attr("x1", "0%").attr("y1", "0%").attr("x2", "0%").attr("y2", "100%");
-                grad.append("stop").attr("offset", "0%").attr("stop-color", "#00F0FF").attr("stop-opacity", 0.2);
-                grad.append("stop").attr("offset", "100%").attr("stop-color", "#00F0FF").attr("stop-opacity", 0);
-
-                svg.append("path").datum(quarters).attr("fill", `url(#${gradId})`).attr("d", area);
-                svg.append("path").datum(quarters).attr("fill", "none").attr("stroke", "#00F0FF").attr("stroke-width", 2).attr("d", line);
-
-                // Axis
-                svg.append("g")
-                    .attr("transform", `translate(0,${height})`)
-                    .call(d3.axisBottom(x).tickSize(0))
-                    .selectAll("text")
-                    .attr("fill", "#475569")
-                    .attr("font-size", "7px")
-                    .attr("transform", "rotate(-30)")
-                    .style("text-anchor", "end")
-                    .attr("dy", "1em");
-
-                svg.selectAll(".domain").remove();
-            }, [quarters, mean, sd, type]);
-
-            return (
-                <div className="flex-1 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/50">
-                    <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-xl font-black text-white italic">{type}</h4>
-                        <div className="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">CURRENT: <span className="text-primary">{current.toFixed(2)}x</span></div>
-                    </div>
-                    <div ref={chartRef} className="w-full h-[300px]"></div>
-                </div>
-            );
-        };
-
-        const DragonValuationChart = ({ ticker, stocks }) => {
-            const stock = (ticker === 'IHSG') 
-                ? { t: "IHSG", sector: "COMPOSITE", ap: 7240 }
-                : (stocks.find(s => s.t === ticker) || (stocks && stocks[0]) || { sector: "FINANCE", ap: 1500 });
-                
-            const sector = stock.sector || "FINANCE";
-            const base = INDEX_BASES[sector] || INDEX_BASES["FINANCE"];
-
-            const data = useMemo(() => {
-                const quarters = [];
-                const now = new Date();
-                let currentPrice = stock.ap || base.basePrice;
-                let seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                const random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-
-                for (let i = 11; i >= 0; i--) {
-                    const qDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 - (i * 3), 1);
-                    const qName = `Q${Math.floor(qDate.getMonth() / 3) + 1} ${qDate.getFullYear()}`;
-                    const netVar = (random() - 0.5) * 50;
-                    quarters.push({ name: qName, netflow: netVar });
-                }
-                
-                return { quarters };
-            }, [ticker, stock, base]);
-
-            return (
-                <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
-                            <h2 className="text-2xl font-black text-white italic tracking-tighter">DRAGON FLOW INTELLIGENCE</h2>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{ticker} - Institutional Flow Matrix (Last 12 Quarters)</p>
-                        </div>
-                    </div>
-
-                    <div className="p-8 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden relative min-h-[400px]">
-                        <div className="flex justify-around items-end h-[300px] gap-2">
-                             {data.quarters.map((q, i) => (
-                                 <div key={i} className="flex flex-col items-center flex-1 group">
-                                     <div className={`w-full rounded-t-lg transition-all duration-500 hover:brightness-125 ${q.netflow > 0 ? 'bg-primary/40 border-t-2 border-primary' : 'bg-danger/40 border-t-2 border-danger'}`} style={{ height: `${Math.abs(q.netflow) * 4}%` }}>
-                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 text-[10px] font-black text-white bg-slate-800 px-2 py-1 rounded border border-slate-700">
-                                             {q.netflow > 0 ? '+' : ''}{q.netflow.toFixed(1)}B
-                                         </div>
-                                     </div>
-                                     <span className="text-[8px] font-black text-slate-600 uppercase mt-4 rotate-45">{q.name}</span>
+                    {/* Header Controls */}
+                    <div className="absolute top-8 left-8 z-20 flex flex-col gap-3">
+                         <div className="flex items-center gap-3 p-4 glass-panel rounded-2xl border border-white/10 bg-slate-900/40 backdrop-blur-2xl">
+                             <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center border border-primary/30">
+                                 <Icon name="layout-grid" className="text-primary w-5 h-5 shadow-[0_0_10px_#00F0FF]" />
+                             </div>
+                             <div>
+                                 <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] leading-none mb-1">Matrix Resonance</h4>
+                                 <div className="flex gap-2">
+                                     <button onClick={() => setViewDepth('sectors')} className={`px-4 py-1.5 text-[9px] font-black rounded-lg border transition-all ${viewDepth === 'sectors' ? 'bg-primary text-slate-900 border-primary' : 'bg-slate-800/50 text-slate-500 border-slate-700 hover:text-white'}`}>SECTORS</button>
+                                     {selectedSector && <button onClick={() => setViewDepth('stocks')} className={`px-4 py-1.5 text-[9px] font-black rounded-lg border transition-all ${viewDepth === 'stocks' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800/50 text-slate-500 border-slate-700 hover:text-white'}`}>{selectedSector}</button>}
+                                     {selectedStock && <button onClick={() => setViewDepth('whales')} className={`px-4 py-1.5 text-[9px] font-black rounded-lg border transition-all ${viewDepth === 'whales' ? 'bg-amber-600 text-white border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-slate-800/50 text-slate-500 border-slate-700 hover:text-white'}`}>{selectedStock}</button>}
                                  </div>
-                             ))}
-                        </div>
-                        <div className="absolute bottom-16 left-0 w-full h-[1px] bg-slate-700"></div>
+                             </div>
+                         </div>
+
+                         {/* Legend Panel */}
+                         <div className="p-4 glass-panel rounded-2xl border border-white/5 bg-slate-900/20 backdrop-blur-md w-fit">
+                             <div className="flex gap-6">
+                                 <div className="flex items-center gap-2 text-[8px] font-black text-slate-400 uppercase"><div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_#00F0FF]"></div> Index</div>
+                                 <div className="flex items-center gap-2 text-[8px] font-black text-slate-400 uppercase"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> Sector</div>
+                                 <div className="flex items-center gap-2 text-[8px] font-black text-slate-400 uppercase"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Institutions</div>
+                             </div>
+                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="p-6 glass-panel rounded-3xl border border-slate-800/50 flex items-center gap-6">
-                            <div className="p-4 rounded-2xl bg-slate-900 border border-white/5 text-primary">
-                                <Icon name="trending-up" className="w-8 h-8" />
+                    <svg ref={svgRef} className="w-full h-full" />
+
+                    {/* AI Analysis Modal at Bottom */}
+                    <div className="absolute bottom-8 left-8 right-8 p-6 glass-panel rounded-[2rem] border-t border-primary/30 bg-[#0F172A]/80 backdrop-blur-2xl animate-in slide-in-from-bottom-8 duration-500">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/20 rounded-lg animate-pulse"><Icon name="cpu" className="text-primary w-4 h-4" /></div>
+                                <span className="text-[11px] font-black text-primary uppercase tracking-[0.2em] italic">Neural Engine Analysis v5.0</span>
                             </div>
-                            <div>
-                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 text-left">Capital Inflow Status</div>
-                                <div className="text-2xl font-black text-primary text-left italic tracking-tighter uppercase">Accumulation Mode</div>
-                                <p className="text-xs font-bold text-slate-400 text-left">"Significant institutional building detected in the last session."</p>
-                            </div>
+                            <div className="px-3 py-1 bg-slate-800 rounded-full text-[8px] font-black text-slate-500 uppercase tracking-widest border border-slate-700">Quantum Link: Established</div>
                         </div>
-                        <div className="p-6 glass-panel rounded-3xl border border-slate-800/50 flex items-center gap-6">
-                             <div className="p-4 rounded-2xl bg-slate-900 border border-white/5 text-success">
-                                <Icon name="activity" className="text-success w-8 h-8" />
-                            </div>
-                            <div>
-                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 text-left">Market Sentiment Score</div>
-                                <div className="text-2xl font-black text-success text-left italic tracking-tighter uppercase">Strong Bullish</div>
-                                <p className="text-xs font-bold text-slate-400 text-left">"Volume profile confirms strong buyer presence at current pivot."</p>
-                            </div>
-                        </div>
+                        <p className="text-[14px] font-bold text-slate-200 leading-relaxed italic border-l-4 border-primary/50 pl-6 py-2 bg-primary/5 rounded-r-xl">
+                            "{aiEngine.getAnalysis()}"
+                        </p>
                     </div>
-                </div>
-            );
-        };
 
-        const OrderbookView = ({ stocks, activeTicker }) => {
-            const stock = stocks.find(s => s.t === activeTicker) || stocks[0];
-            const generateDepth = (base, count) => {
-                let current = base;
-                return Array.from({ length: count }).map((_, i) => {
-                    current -= (i % 2 === 0 ? 2 : 4);
-                    return { price: current, lot: Math.floor(Math.random() * 5000) + 100, freq: Math.floor(Math.random() * 50) + 1 };
-                });
-            };
-            const bids = generateDepth(stock.ap, 10);
-            const asks = generateDepth(stock.ap + 10, 10).reverse();
-
-            return (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <DragonValuationChart ticker={activeTicker} stocks={stocks} />
-                    
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        <div className="lg:col-span-1">
-                            <Card title="Info Emiten" icon={<Icon name="info" />}>
-                                <div className="space-y-6">
-                                    <div><h1 className="text-4xl font-black text-white tracking-tighter">{stock.t}</h1><p className="text-slate-500 font-bold uppercase text-xs tracking-widest">{stock.sector}</p></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><div className="text-[10px] text-slate-500 font-bold uppercase">Open</div><div className="text-md font-black text-slate-200">{stock.ap - 10}</div></div>
-                                        <div><div className="text-[10px] text-slate-500 font-bold uppercase">High</div><div className="text-md font-black text-success">{stock.ap + 50}</div></div>
-                                        <div><div className="text-[10px] text-slate-500 font-bold uppercase">Low</div><div className="text-md font-black text-danger">{stock.ap - 20}</div></div>
-                                        <div><div className="text-[10px] text-slate-500 font-bold uppercase">Avg</div><div className="text-md font-black text-warning">{stock.ap}</div></div>
-                                    </div>
-                                    <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl"><div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Lot Volume</div><div className="text-xl font-black text-white">{(Math.random() * 1000).toFixed(0)}K</div></div>
-                                </div>
-                            </Card>
-                        </div>
-                        <div className="lg:col-span-3">
-                            <Card title="BidOffer Smart Money Concept" icon={<Icon name="message-square" />}>
-                                <div className="grid grid-cols-2 gap-0.5 bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden p-0.5">
-                                    <div className="bg-slate-900/80 p-4">
-                                        <div className="grid grid-cols-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">
-                                            <span>Freq</span><span>Lot</span><span className="text-right">Bid (Antri Beli)</span>
-                                        </div>
-                                        {bids.map((b, i) => (
-                                            <div key={i} className="grid grid-cols-3 py-1.5 border-b border-slate-800/50 group hover:bg-slate-800 transition-colors">
-                                                <span className="text-[11px] font-bold text-slate-500">{b.freq}</span>
-                                                <span className="text-[11px] font-bold text-slate-200">{b.lot.toLocaleString()}</span>
-                                                <span className="text-right text-[12px] font-black text-success tracking-tight">Rp{b.price.toLocaleString()}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="bg-slate-900/80 p-4">
-                                        <div className="grid grid-cols-3 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">
-                                            <span>Ask (Antri Jual)</span><span>Lot</span><span className="text-right">Freq</span>
-                                        </div>
-                                        {asks.map((a, i) => (
-                                            <div key={i} className="grid grid-cols-3 py-1.5 border-b border-slate-800/50 group hover:bg-slate-800 transition-colors">
-                                                <span className="text-[12px] font-black text-danger tracking-tight">Rp{a.price.toLocaleString()}</span>
-                                                <span className="text-[11px] font-bold text-slate-200 pl-2">{a.lot.toLocaleString()}</span>
-                                                <span className="text-right text-[11px] font-bold text-slate-500">{a.freq}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </Card>
-                        </div>
+                    {/* Interaction Hint */}
+                    <div className="absolute top-8 right-8 text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                        <Icon name="mouse-pointer-2" className="w-3 h-3" /> CLICK NODE TO DRILL DOWN
                     </div>
                 </div>
             );
@@ -2209,6 +1667,33 @@
                 const frequency = isIHSG ? 1250000 : (seed % 5000) + 1000;
                 
                 const netFlow = isIHSG ? 245.5 : (seed % 40) - 15;
+                return { freeFloat, avg5dVal, buyPct, sellPct, s1, s2, r1, r2, entry, tp, sl, rr, isBullish, volume, value, frequency, netFlow };
+            }, [stock.ap]);
+            const signal = generateDragonSignal(activeTicker);
+
+            const now = new Date();
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                    {/* Header Controls */}
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-[#0B121E] p-8 rounded-[2.5rem] border border-slate-800/50 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
+                        <div className="relative z-10">
+                            <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase flex items-center gap-3">
+                                Catch The <span className="text-primary italic">Dragon</span> Intelligence Matrix
+                            </h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Deep Hierarchical Market Analysis Engine v5.0</p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10 w-full lg:w-auto">
+                            <div className="relative w-full sm:w-80">
+                                <label className="absolute -top-6 left-1 text-[9px] font-black text-primary uppercase tracking-widest">Symbol Intel Lock</label>
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"><Icon name="search" className="w-4 h-4" /></div>
+                                <div className="flex gap-2">
+                                    <select 
+                                        value={activeTicker}
+                                        onChange={(e) => setActiveTicker(e.target.value)}
+                                        className="w-full bg-slate-900/50 border-2 border-slate-800 text-white pl-12 pr-4 py-3.5 rounded-2xl focus:border-primary outline-none font-black text-sm transition-all focus:ring-4 focus:ring-primary/10 appearance-none cursor-pointer"
+                                    >
                                         <option value="IHSG">IHSG - COMPOSITE INDEX</option>
                                         {stocks.filter(s => s.t !== 'IHSG').map(s => <option key={s.t} value={s.t}>{s.t} - {s.sector}</option>)}
                                     </select>
@@ -2221,290 +1706,502 @@
                                 </div>
                             </div>
                         </div>
-                        
-                        {/* THE DRAGON NETWORK INTELLIGENCE MATRIX (THE "BUBBLE" VIEW) */}
-                        <div className="mb-8 p-0 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
-                             <BubbleDragon ticker={activeTicker} />
-                        </div>
+                    </div>
+                    
+                    {/* THE DRAGON NETWORK INTELLIGENCE MATRIX (THE "BUBBLE" VIEW) */}
+                    <div className="mb-8 p-0 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
+                         <BubbleDragon ticker={activeTicker} stocks={stocks} />
+                    </div>
 
-                        {/* Live Candlestick Market Chart */}
-                        <div className="mb-8 h-[650px] bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden glass-panel relative">
-                            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-[#0F172A]/80">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                                        <Icon name="activity" className="text-primary w-5 h-5 shadow-[0_0_10px_rgba(0,240,255,0.5)]" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-black text-white uppercase tracking-widest leading-none mb-1">Live Market Pulse</h3>
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Ticker: {activeTicker} | Real-time Candlestick Matrix</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="hidden md:flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-success animate-pulse"></div>
-                                        <span className="text-[10px] font-bold text-success uppercase">Live Feed Active</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-6 h-[550px]">
-                                <ChartWidget ticker={activeTicker} />
-                            </div>
-                        </div>
-
-                        {/* Worm or Dragon Pattern Valuation Section */}
-                        <div className="mb-8 p-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
-                             <DragonValuationChart ticker={activeTicker} stocks={stocks} />
-                        </div>
-
-                        {/* Order Book (Bid/Offer) Section */}
-                        <div className="mb-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl relative">
-                            <div className="p-6 border-b border-slate-800 bg-[#0F172A]/80 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-warning/10 border border-warning/20 flex items-center justify-center">
-                                    <Icon name="layers" className="text-warning w-5 h-5 shadow-[0_0_10px_rgba(255,193,7,0.5)]" />
+                    {/* Live Candlestick Market Chart */}
+                    <div className="mb-8 h-[650px] bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden glass-panel relative">
+                        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-[#0F172A]/80">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                    <Icon name="activity" className="text-primary w-5 h-5 shadow-[0_0_10px_rgba(0,240,255,0.5)]" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-black text-white uppercase tracking-widest leading-none mb-1">Orderbook Deep-Flow Matrix</h3>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Ticker: {activeTicker} | Real-Time Market Depth & Liquidity</p>
+                                    <h3 className="text-sm font-black text-white uppercase tracking-widest leading-none mb-1">Live Market Pulse</h3>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Ticker: {activeTicker} | Real-time Candlestick Matrix</p>
                                 </div>
                             </div>
-
-                            <div className="p-8">
-                                {/* Orderbook Summary Header */}
-                                <div className="grid grid-cols-3 gap-8 mb-8 pb-8 border-b border-slate-800/50">
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Open</span><span className="text-sm font-black text-danger">{signal.s1 + 50}</span></div>
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">High</span><span className="text-sm font-black text-danger">{signal.r1 + 20}</span></div>
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Low</span><span className="text-sm font-black text-danger">{signal.s2 - 10}</span></div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Prev</span><span className="text-sm font-black text-slate-300">{Math.round(stock.ap * 0.98)}</span></div>
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">ARA</span><span className="text-sm font-black text-success">{Math.round(stock.ap * 1.25)}</span></div>
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">ARB</span><span className="text-sm font-black text-danger">{Math.round(stock.ap * 0.75)}</span></div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Lot</span><span className="text-sm font-black text-danger">{signal.volume} M</span></div>
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Val</span><span className="text-sm font-black text-danger">{signal.value} B</span></div>
-                                        <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Avg</span><span className="text-sm font-black text-warning">{Math.round(stock.ap * 1.01)}</span></div>
-                                    </div>
-                                </div>
-
-                                {/* Orderbook Main Table */}
-                                <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/50">
-                                    <table className="w-full text-[11px] font-black border-collapse">
-                                        <thead>
-                                            <tr className="bg-slate-900/80 text-slate-500 uppercase tracking-widest text-[9px] border-b border-slate-800">
-                                                <th className="p-3 text-center">Freq</th>
-                                                <th className="p-3 text-center">Lot</th>
-                                                <th className="p-3 text-center text-primary bg-primary/5">Bid</th>
-                                                <th className="p-3 text-center text-warning bg-warning/5">Offer</th>
-                                                <th className="p-3 text-center">Lot</th>
-                                                <th className="p-3 text-center">Freq</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {Array.from({ length: 10 }).map((_, i) => {
-                                                const bidPrice = Math.round(stock.ap - (i * 10) - (i === 0 ? 0 : 5));
-                                                const offerPrice = Math.round(stock.ap + (i * 10) + 5);
-                                                const bidLot = Math.round((20000 / (i + 1)) + (Math.sin(i) * 500));
-                                                const offerLot = Math.round((15000 / (i + 1)) + (Math.cos(i) * 500));
-                                                const bidFreq = Math.round((500 / (i + 1)) + (Math.sin(i) * 50));
-                                                const offerFreq = Math.round((400 / (i + 1)) + (Math.cos(i) * 40));
-                                                
-                                                return (
-                                                    <tr key={i} className="border-b border-slate-800/30 hover:bg-white/5 transition-all group">
-                                                        <td className="p-3 text-center text-primary/70">{bidFreq.toLocaleString()}</td>
-                                                        <td className="p-3 text-center relative overflow-hidden">
-                                                            <div className="absolute top-0 right-0 h-full bg-danger/10 transition-all duration-1000" style={{ width: `${(bidLot / 25000) * 100}%` }}></div>
-                                                            <span className="relative z-10 text-slate-300">{bidLot.toLocaleString()}</span>
-                                                        </td>
-                                                        <td className="p-3 text-center text-danger bg-danger/5 group-hover:bg-danger/10">{bidPrice.toLocaleString()}</td>
-                                                        <td className="p-3 text-center text-success bg-success/5 group-hover:bg-success/10">{offerPrice.toLocaleString()}</td>
-                                                        <td className="p-3 text-center relative overflow-hidden">
-                                                            <div className="absolute top-0 left-0 h-full bg-success/10 transition-all duration-1000" style={{ width: `${(offerLot / 25000) * 100}%` }}></div>
-                                                            <span className="relative z-10 text-slate-300">{offerLot.toLocaleString()}</span>
-                                                        </td>
-                                                        <td className="p-3 text-center text-success/70">{offerFreq.toLocaleString()}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                        <tfoot className="bg-slate-900/50 text-white uppercase tracking-tighter">
-                                            <tr className="border-t-2 border-slate-700">
-                                                <th className="p-4 text-center">4.3k</th>
-                                                <th className="p-4 text-center">165k</th>
-                                                <th className="p-4 text-center" colSpan="2">TOTAL MATRIX</th>
-                                                <th className="p-4 text-center">244k</th>
-                                                <th className="p-4 text-center">3.8k</th>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                            <div className="flex items-center gap-4">
+                                <div className="hidden md:flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+                                    <span className="text-[10px] font-bold text-success uppercase">Live Feed Active</span>
                                 </div>
                             </div>
                         </div>
+                        <div className="p-6 h-[550px]">
+                            <ChartWidget ticker={activeTicker} />
+                        </div>
+                    </div>
 
-                        <div className="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900/30 backdrop-blur-md">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-900/80">
-                                    <tr className="border-b border-slate-800">
-                                        <th className="py-5 px-6 text-[11px] font-black text-slate-500 uppercase tracking-widest">Parameter Layer</th>
-                                        <th className="py-5 px-6 text-[11px] font-black text-slate-500 uppercase tracking-widest">Real-Time Output Data</th>
-                                        <th className="py-5 px-6 text-[11px] font-black text-slate-500 uppercase tracking-widest hidden md:table-cell">Algorithmic Logic & Formula</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
-                                        <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">1. Company & Free Float %</td>
-                                        <td className="py-6 px-6">
-                                            <div className="flex flex-col">
-                                                <span className="text-primary font-black text-lg">{stock.t}</span>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">FLOAT: {signal.freeFloat}%</span>
+                    {/* Worm or Dragon Pattern Valuation Section */}
+                    <div className="mb-8 p-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
+                         <DragonValuationChart ticker={activeTicker} stocks={stocks} />
+                    </div>
+
+                    {/* Order Book (Bid/Offer) Section */}
+                    <div className="mb-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl relative">
+                        <div className="p-6 border-b border-slate-800 bg-[#0F172A]/80 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-warning/10 border border-warning/20 flex items-center justify-center">
+                                <Icon name="layers" className="text-warning w-5 h-5 shadow-[0_0_10px_rgba(255,193,7,0.5)]" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-white uppercase tracking-widest leading-none mb-1">Orderbook Deep-Flow Matrix</h3>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Ticker: {activeTicker} | Real-Time Market Depth & Liquidity</p>
+                            </div>
+                        </div>
+
+                        <div className="p-8">
+                            {/* Orderbook Summary Header */}
+                            <div className="grid grid-cols-3 gap-8 mb-8 pb-8 border-b border-slate-800/50">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Open</span><span className="text-sm font-black text-danger">{signal.s1 + 50}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">High</span><span className="text-sm font-black text-danger">{signal.r1 + 20}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Low</span><span className="text-sm font-black text-danger">{signal.s2 - 10}</span></div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Prev</span><span className="text-sm font-black text-slate-300">{Math.round(stock.ap * 0.98)}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">ARA</span><span className="text-sm font-black text-success">{Math.round(stock.ap * 1.25)}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">ARB</span><span className="text-sm font-black text-danger">{Math.round(stock.ap * 0.75)}</span></div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Lot</span><span className="text-sm font-black text-danger">{signal.volume} M</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Val</span><span className="text-sm font-black text-danger">{signal.value} B</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Avg</span><span className="text-sm font-black text-warning">{Math.round(stock.ap * 1.01)}</span></div>
+                                </div>
+                            </div>
+
+                            {/* Orderbook Main Table */}
+                            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/50">
+                                <table className="w-full text-[11px] font-black border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-900/80 text-slate-500 uppercase tracking-widest text-[9px] border-b border-slate-800">
+                                            <th className="p-3 text-center">Freq</th>
+                                            <th className="p-3 text-center">Lot</th>
+                                            <th className="p-3 text-center text-primary bg-primary/5">Bid</th>
+                                            <th className="p-3 text-center text-warning bg-warning/5">Offer</th>
+                                            <th className="p-3 text-center">Lot</th>
+                                            <th className="p-3 text-center">Freq</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Array.from({ length: 10 }).map((_, i) => {
+                                            const bidPrice = Math.round(stock.ap - (i * 10) - (i === 0 ? 0 : 5));
+                                            const offerPrice = Math.round(stock.ap + (i * 10) + 5);
+                                            const bidLot = Math.round((20000 / (i + 1)) + (Math.sin(i) * 500));
+                                            const offerLot = Math.round((15000 / (i + 1)) + (Math.cos(i) * 500));
+                                            const bidFreq = Math.round((500 / (i + 1)) + (Math.sin(i) * 50));
+                                            const offerFreq = Math.round((400 / (i + 1)) + (Math.cos(i) * 40));
+                                            
+                                            return (
+                                                <tr key={i} className="border-b border-slate-800/30 hover:bg-white/5 transition-all group">
+                                                    <td className="p-3 text-center text-primary/70">{bidFreq.toLocaleString()}</td>
+                                                    <td className="p-3 text-center relative overflow-hidden">
+                                                        <div className="absolute top-0 right-0 h-full bg-danger/10 transition-all duration-1000" style={{ width: `${(bidLot / 25000) * 100}%` }}></div>
+                                                        <span className="relative z-10 text-slate-300">{bidLot.toLocaleString()}</span>
+                                                    </td>
+                                                    <td className="p-3 text-center text-danger bg-danger/5 group-hover:bg-danger/10">{bidPrice.toLocaleString()}</td>
+                                                    <td className="p-3 text-center text-success bg-success/5 group-hover:bg-success/10">{offerPrice.toLocaleString()}</td>
+                                                    <td className="p-3 text-center relative overflow-hidden">
+                                                        <div className="absolute top-0 left-0 h-full bg-success/10 transition-all duration-1000" style={{ width: `${(offerLot / 25000) * 100}%` }}></div>
+                                                        <span className="relative z-10 text-slate-300">{offerLot.toLocaleString()}</span>
+                                                    </td>
+                                                    <td className="p-3 text-center text-success/70">{offerFreq.toLocaleString()}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    <tfoot className="bg-slate-900/50 text-white uppercase tracking-tighter">
+                                        <tr className="border-t-2 border-slate-700">
+                                            <th className="p-4 text-center">4.3k</th>
+                                            <th className="p-4 text-center">165k</th>
+                                            <th className="p-4 text-center" colSpan="2">TOTAL MATRIX</th>
+                                            <th className="p-4 text-center">244k</th>
+                                            <th className="p-4 text-center">3.8k</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900/30 backdrop-blur-md">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-900/80">
+                                <tr className="border-b border-slate-800">
+                                    <th className="py-5 px-6 text-[11px] font-black text-slate-500 uppercase tracking-widest">Parameter Layer</th>
+                                    <th className="py-5 px-6 text-[11px] font-black text-slate-500 uppercase tracking-widest">Real-Time Output Data</th>
+                                    <th className="py-5 px-6 text-[11px] font-black text-slate-500 uppercase tracking-widest hidden md:table-cell">Algorithmic Logic & Formula</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
+                                    <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">1. Company & Free Float %</td>
+                                    <td className="py-6 px-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-primary font-black text-lg">{stock.t}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">FLOAT: {signal.freeFloat}%</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-6 px-6 hidden md:table-cell">
+                                        <div className="text-[9px] text-slate-500 space-y-1">
+                                            <div className="font-bold text-slate-400">FF% = (Public / Total) × 100</div>
+                                            <div>{Number(signal.freeFloat) < 15 ? "LOW FLOAT &rarr; HIGH VOLATILITY / BANDAR CONTROL" : "HIGH FLOAT &rarr; STABLE / INSTITUTIONAL INTEREST"}</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
+                                    <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">2. Trade Date & Avg 5D Value</td>
+                                    <td className="py-6 px-6 text-white font-black text-sm">
+                                        {now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} | {now.toLocaleTimeString('id-ID')}
+                                         <div className="text-[10px] text-primary mt-1 uppercase tracking-widest">Avg 5D Value: {signal.avg5dVal}</div>
+                                    </td>
+                                    <td className="py-6 px-6 hidden md:table-cell">
+                                        <div className="text-[9px] text-slate-500 space-y-1">
+                                            <div className="font-bold text-slate-400">AVG5D = (SumVal5) / 5</div>
+                                            <div>Baseline analysis to detect abnormal market activity today.</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
+                                    <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">3. Trade Price & Sinyal Done</td>
+                                    <td className="py-6 px-6">
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-2xl font-black text-white tracking-tighter">Rp{stock.ap.toLocaleString('id-ID')}</span>
+                                            <div className={`px-4 py-1.5 rounded-lg text-slate-950 font-black text-[11px] uppercase tracking-widest ${signal.buyPct > 50 ? 'bg-success' : 'bg-danger'}`}>
+                                                {signal.buyPct > 50 ? `STRONG BUY (${signal.buyPct}%)` : `SELL ZONE (${signal.sellPct}%)`}
                                             </div>
-                                        </td>
-                                        <td className="py-6 px-6 hidden md:table-cell">
-                                            <div className="text-[9px] text-slate-500 space-y-1">
-                                                <div className="font-bold text-slate-400">FF% = (Public / Total) × 100</div>
-                                                <div>{Number(signal.freeFloat) < 15 ? "LOW FLOAT &rarr; HIGH VOLATILITY / BANDAR CONTROL" : "HIGH FLOAT &rarr; STABLE / INSTITUTIONAL INTEREST"}</div>
+                                        </div>
+                                    </td>
+                                    <td className="py-6 px-6 hidden md:table-cell">
+                                        <div className="text-[9px] text-slate-500 space-y-1">
+                                            <div className="font-bold text-slate-400">Buy % = (BuyV / TotV) × 100</div>
+                                            <div>Current pressure: {signal.buyPct > 50 ? "BULLISH ACCUMULATION" : "BEARISH DISTRIBUTION"}</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
+                                    <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">4. Support & Resistance (RR)</td>
+                                    <td className="py-6 px-6">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <div className="text-[8px] font-black text-slate-500 uppercase mb-1">Support Levels</div>
+                                                <div className="text-[11px] font-bold text-danger">S1: {signal.s1} | S2: {signal.s2}</div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
-                                        <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">2. Trade Date & Avg 5D Value</td>
-                                        <td className="py-6 px-6 text-white font-black text-sm">
-                                            {now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} | {now.toLocaleTimeString('id-ID')}
-                                             <div className="text-[10px] text-primary mt-1 uppercase tracking-widest">Avg 5D Value: {signal.avg5dVal}</div>
-                                        </td>
-                                        <td className="py-6 px-6 hidden md:table-cell">
-                                            <div className="text-[9px] text-slate-500 space-y-1">
-                                                <div className="font-bold text-slate-400">AVG5D = (SumVal5) / 5</div>
-                                                <div>Baseline analysis to detect abnormal market activity today.</div>
+                                            <div>
+                                                <div className="text-[8px] font-black text-slate-500 uppercase mb-1">Resistance Levels</div>
+                                                <div className="text-[11px] font-bold text-success">R1: {signal.r1} | R2: {signal.r2}</div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
-                                        <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">3. Trade Price & Sinyal Done</td>
-                                        <td className="py-6 px-6">
-                                            <div className="flex items-center gap-4">
-                                                <span className="text-2xl font-black text-white tracking-tighter">Rp{stock.ap.toLocaleString('id-ID')}</span>
-                                                <div className={`px-4 py-1.5 rounded-lg text-slate-950 font-black text-[11px] uppercase tracking-widest ${signal.buyPct > 50 ? 'bg-success' : 'bg-danger'}`}>
-                                                    {signal.buyPct > 50 ? `STRONG BUY (${signal.buyPct}%)` : `SELL ZONE (${signal.sellPct}%)`}
+                                            <div className="col-span-2">
+                                                <div className="text-[9px] font-black text-primary uppercase">Risk/Reward: 1:{signal.rr}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="py-6 px-6 hidden md:table-cell">
+                                        <div className="text-[9px] text-slate-500 space-y-1">
+                                            <div className="font-bold text-slate-400">RR = (TP - Entry) / (Entry - SL)</div>
+                                            <div>Worth analysis based on pivot points and historical swing lows.</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
+                                    <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">5. Trade Plan Output</td>
+                                    <td className="py-6 px-6">
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div className="bg-success/10 p-2 rounded-lg border border-success/20">
+                                                <div className="text-[7px] font-black text-success uppercase">ENTRY</div>
+                                                <div className="text-[11px] font-black text-white">Rp{signal.entry}</div>
+                                            </div>
+                                            <div className="bg-primary/10 p-2 rounded-lg border border-primary/20">
+                                                <div className="text-[7px] font-black text-primary uppercase">TP (TARGET)</div>
+                                                <div className="text-[11px] font-black text-white">Rp{signal.tp}</div>
+                                            </div>
+                                            <div className="bg-danger/10 p-2 rounded-lg border border-danger/20">
+                                                <div className="text-[7px] font-black text-danger uppercase">SL (CUTLOSS)</div>
+                                                <div className="text-[11px] font-black text-white">Rp{signal.sl}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="py-6 px-6 hidden md:table-cell">
+                                        <div className="text-[9px] text-slate-500 space-y-1">
+                                            <div className="font-bold text-slate-400">Auto-Generated Trade Range</div>
+                                            <div>Plan: Entry at S1, Exit at R1. Safety Stop at S1-2% Buffer.</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
+                                    <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">6. 3W (Week) Trend View</td>
+                                    <td className="py-6 px-6">
+                                        <div className="w-full space-y-2">
+                                            <div className="flex justify-between text-[8px] font-black uppercase text-slate-500"><span>Bearish Structure</span><span>Bullish Structure</span></div>
+                                            <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden flex">
+                                                <div className="h-full bg-danger transition-all duration-1000" style={{ width: `${100 - signal.buyPct}%` }}></div>
+                                                <div className="h-full bg-success transition-all duration-1000" style={{ width: `${signal.buyPct}%` }}></div>
+                                            </div>
+                                            <div className="text-[10px] font-black text-center text-primary uppercase">{signal.isBullish ? "MAJOR BULLISH TREND ENABLED" : "CONSOLIDATION / DOWNTREND REGIME"}</div>
+                                        </div>
+                                    </td>
+                                    <td className="py-6 px-6 hidden md:table-cell">
+                                        <div className="text-[9px] text-slate-500 space-y-1">
+                                            <div className="font-bold text-slate-400">Price &gt; MA20 &gt; MA50 logic</div>
+                                            <div>Filtering daily noise to identify the dominant market direction.</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
+                                    <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">7. Volume, Value & Frequency</td>
+                                    <td className="py-6 px-6">
+                                        <div className="grid grid-cols-3 gap-6">
+                                            <div><div className="text-[8px] font-black text-slate-500 uppercase">VOL (LOT)</div><div className="text-sm font-black text-white">{signal.volume} Million</div></div>
+                                            <div><div className="text-[8px] font-black text-slate-500 uppercase">VAL (RP)</div><div className="text-sm font-black text-white">{signal.value} Billion</div></div>
+                                            <div><div className="text-[8px] font-black text-slate-500 uppercase">FREQ (T)</div><div className="text-sm font-black text-white">{signal.frequency} Ticks</div></div>
+                                        </div>
+                                    </td>
+                                    <td className="py-6 px-6 hidden md:table-cell">
+                                        <div className="text-[9px] text-slate-500 space-y-1">
+                                            <div className="font-bold text-slate-400">Val = Vol × Price | Freq = Ticks</div>
+                                            <div>High value + Low frequency detects quiet accumulation by big players.</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr className="hover:bg-white/5 transition-all">
+                                    <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">8. Bandar Movement (1D / 3D)</td>
+                                    <td className="py-6 px-6">
+                                        <div className="w-full space-y-2">
+                                            <div className="h-4 w-full bg-slate-800 rounded-lg overflow-hidden flex relative">
+                                                <div className={`h-full bg-primary/40 flex items-center justify-end px-2 text-[8px] font-black text-white transition-all duration-1000`} style={{ width: `${50 + signal.netFlow}%` }}>
+                                                    {signal.netFlow > 0 ? "ACCUMULATION" : "DISTRIBUTION"}
                                                 </div>
                                             </div>
-                                        </td>
-                                        <td className="py-6 px-6 hidden md:table-cell">
-                                            <div className="text-[9px] text-slate-500 space-y-1">
-                                                <div className="font-bold text-slate-400">Buy % = (BuyV / TotV) × 100</div>
-                                                <div>Current pressure: {signal.buyPct > 50 ? "BULLISH ACCUMULATION" : "BEARISH DISTRIBUTION"}</div>
+                                            <div className="text-[10px] font-black text-white uppercase flex justify-between">
+                                                <span>NETFLOW ANALYSIS</span>
+                                                <span className={signal.netFlow > 0 ? "text-success" : "text-danger"}>{signal.netFlow > 0 ? "+" : ""}{signal.netFlow}%</span>
                                             </div>
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
-                                        <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">4. Support & Resistance (RR)</td>
-                                        <td className="py-6 px-6">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <div className="text-[8px] font-black text-slate-500 uppercase mb-1">Support Levels</div>
-                                                    <div className="text-[11px] font-bold text-danger">S1: {signal.s1} | S2: {signal.s2}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-[8px] font-black text-slate-500 uppercase mb-1">Resistance Levels</div>
-                                                    <div className="text-[11px] font-bold text-success">R1: {signal.r1} | R2: {signal.r2}</div>
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <div className="text-[9px] font-black text-primary uppercase">Risk/Reward: 1:{signal.rr}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-6 px-6 hidden md:table-cell">
-                                            <div className="text-[9px] text-slate-500 space-y-1">
-                                                <div className="font-bold text-slate-400">RR = (TP - Entry) / (Entry - SL)</div>
-                                                <div>Worth analysis based on pivot points and historical swing lows.</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
-                                        <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">5. Trade Plan Output</td>
-                                        <td className="py-6 px-6">
-                                            <div className="grid grid-cols-3 gap-2">
-                                                <div className="bg-success/10 p-2 rounded-lg border border-success/20">
-                                                    <div className="text-[7px] font-black text-success uppercase">ENTRY</div>
-                                                    <div className="text-[11px] font-black text-white">Rp{signal.entry}</div>
-                                                </div>
-                                                <div className="bg-primary/10 p-2 rounded-lg border border-primary/20">
-                                                    <div className="text-[7px] font-black text-primary uppercase">TP (TARGET)</div>
-                                                    <div className="text-[11px] font-black text-white">Rp{signal.tp}</div>
-                                                </div>
-                                                <div className="bg-danger/10 p-2 rounded-lg border border-danger/20">
-                                                    <div className="text-[7px] font-black text-danger uppercase">SL (CUTLOSS)</div>
-                                                    <div className="text-[11px] font-black text-white">Rp{signal.sl}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-6 px-6 hidden md:table-cell">
-                                            <div className="text-[9px] text-slate-500 space-y-1">
-                                                <div className="font-bold text-slate-400">Auto-Generated Trade Range</div>
-                                                <div>Plan: Entry at S1, Exit at R1. Safety Stop at S1-2% Buffer.</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
-                                        <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">6. 3W (Week) Trend View</td>
-                                        <td className="py-6 px-6">
-                                            <div className="w-full space-y-2">
-                                                <div className="flex justify-between text-[8px] font-black uppercase text-slate-500"><span>Bearish Structure</span><span>Bullish Structure</span></div>
-                                                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden flex">
-                                                    <div className="h-full bg-danger transition-all duration-1000" style={{ width: `${100 - signal.buyPct}%` }}></div>
-                                                    <div className="h-full bg-success transition-all duration-1000" style={{ width: `${signal.buyPct}%` }}></div>
-                                                </div>
-                                                <div className="text-[10px] font-black text-center text-primary uppercase">{signal.isBullish ? "MAJOR BULLISH TREND ENABLED" : "CONSOLIDATION / DOWNTREND REGIME"}</div>
-                                            </div>
-                                        </td>
-                                        <td className="py-6 px-6 hidden md:table-cell">
-                                            <div className="text-[9px] text-slate-500 space-y-1">
-                                                <div className="font-bold text-slate-400">Price &gt; MA20 &gt; MA50 logic</div>
-                                                <div>Filtering daily noise to identify the dominant market direction.</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
-                                        <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">7. Volume, Value & Frequency</td>
-                                        <td className="py-6 px-6">
-                                            <div className="grid grid-cols-3 gap-6">
-                                                <div><div className="text-[8px] font-black text-slate-500 uppercase">VOL (LOT)</div><div className="text-sm font-black text-white">{signal.volume} Million</div></div>
-                                                <div><div className="text-[8px] font-black text-slate-500 uppercase">VAL (RP)</div><div className="text-sm font-black text-white">{signal.value} Billion</div></div>
-                                                <div><div className="text-[8px] font-black text-slate-500 uppercase">FREQ (T)</div><div className="text-sm font-black text-white">{signal.frequency} Ticks</div></div>
-                                            </div>
-                                        </td>
-                                        <td className="py-6 px-6 hidden md:table-cell">
-                                            <div className="text-[9px] text-slate-500 space-y-1">
-                                                <div className="font-bold text-slate-400">Val = Vol × Price | Freq = Ticks</div>
-                                                <div>High value + Low frequency detects quiet accumulation by big players.</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr className="hover:bg-white/5 transition-all">
-                                        <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">8. Bandar Movement (1D / 3D)</td>
-                                        <td className="py-6 px-6">
-                                            <div className="w-full space-y-2">
-                                                <div className="h-4 w-full bg-slate-800 rounded-lg overflow-hidden flex relative">
-                                                    <div className={`h-full bg-primary/40 flex items-center justify-end px-2 text-[8px] font-black text-white transition-all duration-1000`} style={{ width: `${50 + signal.netFlow}%` }}>
-                                                        {signal.netFlow > 0 ? "ACCUMULATION" : "DISTRIBUTION"}
-                                                    </div>
-                                                </div>
-                                                <div className="text-[10px] font-black text-white uppercase flex justify-between">
-                                                    <span>NETFLOW ANALYSIS</span>
-                                                    <span className={signal.netFlow > 0 ? "text-success" : "text-danger"}>{signal.netFlow > 0 ? "+" : ""}{signal.netFlow}%</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-6 px-6 hidden md:table-cell">
-                                            <div className="text-[9px] text-slate-500 space-y-1">
-                                                <div className="font-bold text-slate-400">Net Flow = BuyV - SellV</div>
-                                                <div>Tracks the footprint of market makers over recent sessions.</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                        </div>
+                                    </td>
+                                    <td className="py-6 px-6 hidden md:table-cell">
+                                        <div className="text-[9px] text-slate-500 space-y-1">
+                                            <div className="font-bold text-slate-400">Net Flow = BuyV - SellV</div>
+                                            <div>Tracks the footprint of market makers over recent sessions.</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const BrokerSummaryView = ({ stocks, watchlist, activeTicker, setActiveTicker }) => {
+            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+            const data = useMemo(() => {
+                const brokers = ["PD", "YP", "CC", "ZP", "NI", "BR", "DR", "DH", "MG", "GR", "AK", "BK", "CS", "KZ", "DX", "LG", "AZ", "OD", "KK", "XA"];
+                return brokers.slice(0, 10).map(code => {
+                    const buyVal = Math.random() * 50;
+                    const sellVal = Math.random() * 40;
+                    return { code, buyVal: buyVal.toFixed(1) + "B", sellVal: sellVal.toFixed(1) + "B", buyLot: Math.floor(buyVal * 1000), sellLot: Math.floor(sellVal * 1000), buyAvg: Math.round(5000 + Math.random() * 200), sellAvg: Math.round(5000 + Math.random() * 200), net: (buyVal - sellVal).toFixed(2) };
+                }).sort((a,b) => b.net - a.net);
+            }, [activeTicker]);
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <BubbleDragon ticker={activeTicker} stocks={stocks} />
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <div className="lg:col-span-1"><Card title="Broker Filter" icon={<Icon name="repeat" />}><div className="space-y-4"><div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Pilih Emiten</label><select value={activeTicker} onChange={(e) => setActiveTicker(e.target.value)} className="w-full bg-slate-800 border-none text-white p-2 rounded-xl font-bold">{stocks.map(s => <option key={s.t} value={s.t}>{s.t}</option>)}</select></div><div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Set Tanggal Analysis</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-800 border-none text-white p-2 rounded-xl font-bold" /></div></div></Card></div>
+                        <div className="lg:col-span-3"><Card title={"Broker Summary (Net Analysis) - " + activeTicker}><div className="overflow-x-auto"><table className="w-full text-left border-separate border-spacing-y-2"><thead><tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest"><th className="pb-4 pl-4">Broker</th><th className="pb-4">Buy Value</th><th className="pb-4">Sell Value</th><th className="pb-4">Avg Buy</th><th className="pb-4">Avg Sell</th><th className="pb-4 pr-4 text-right">Net Value</th></tr></thead><tbody>{data.map((b, i) => (<tr key={i} className="bg-slate-900/40 rounded-xl border border-slate-800"><td className="py-3 px-4 rounded-l-xl"><span className={`font-black tracking-widest ${Number(b.net) > 0 ? 'text-primary' : 'text-danger'}`}>{b.code}</span></td><td className="py-3">{b.buyVal}</td><td className="py-3">{b.sellVal}</td><td className="py-3">{b.buyAvg}</td><td className="py-3">{b.sellAvg}</td><td className={`py-3 px-4 text-right font-black rounded-r-xl ${Number(b.net) > 0 ? 'text-success' : 'text-danger'}`}>{Number(b.net) > 0 ? '+' : ''}{b.net}B</td></tr>))}</tbody></table></div></Card></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const StreamView = ({ stocks, activeTicker }) => {
+            const stock = (stocks && stocks.find(s => s.t === activeTicker)) || (stocks && stocks[0]) || { t: "IDX", ap: 0, pct: 0 };
+            const [streamItems] = useState([{ id: 1, user: "ProTrader_IDX", text: `Akumulasi masif di $${stock.t}. Orderflow nunjukin bandar lagi tarik barang halus.`, time: "2m ago", type: "bullish", avatar: "P" }, { id: 2, user: "AI_Signal_Bot", text: "BREAKOUT DETECTED: Price volume trend crossing baseline.", time: "5m ago", type: "system", avatar: "A" }]);
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 space-y-6"><Card title="AI Social Pulse (Live Feed)" icon={<Icon name="rss" />}><div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar"><div className="bg-primary/5 p-4 rounded-2xl border border-primary/20 mb-6 flex items-start gap-4"><div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center font-black text-slate-900">AI</div><div><div className="text-xs font-black text-primary uppercase tracking-widest mb-1">DEX AI Master Perspective</div><p className="text-sm text-slate-300 italic">"Analisis real-time mendeteksi anomali volume di $${stock.t}."</p></div></div>{streamItems.map(item => (<div key={item.id} className="p-4 bg-slate-900/50 border border-slate-800 rounded-2xl"><div className="flex justify-between items-start mb-2"><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-white ${item.type === 'bullish' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'}`}>{item.avatar}</div><div><h4 className="text-sm font-black text-slate-200">{item.user}</h4><span className="text-[10px] text-slate-500">{item.time}</span></div></div></div><p className="text-sm text-slate-400">{item.text}</p></div>))}</div></Card></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const EipoView = () => {
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <Card title="E-IPO New Listings (IDX)" icon={<Icon name="shopping-bag" />}>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {[{ ticker: "DAAZ", date: "4 Apr 2026", price: 800, score: 88, status: "Undervalued" }].map(ipo => (
+                                <div key={ipo.ticker} className="p-6 glass-panel rounded-3xl border border-slate-700/50 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-4 font-black text-slate-800 text-4xl -rotate-12">{ipo.ticker}</div>
+                                    <div className="flex items-center gap-3 mb-6 relative z-10"><div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center font-black text-[#0F172A]">{ipo.ticker[0]}</div><div><h3 className="text-xl font-black text-white">{ipo.ticker}</h3></div></div>
+                                    <div className="space-y-4 mb-6"><div className="flex justify-between text-sm"><span className="text-slate-500">Price</span><span className="text-white font-black">Rp{ipo.price}</span></div><div className="flex justify-between text-sm items-center"><span className="text-slate-500">AI Score</span><span className="text-lg font-black text-primary">{ipo.score}/100</span></div></div>
+                                    <div className={`py-2 px-4 rounded-xl text-center text-xs font-black uppercase ${ipo.status === 'Undervalued' ? 'bg-success text-slate-950' : 'bg-danger text-white'}`}>{ipo.status}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </div>
+            );
+        };
+
+        const ValuationSubChart = ({ type, quarters, mean, sd, current }) => {
+            const chartRef = useRef(null);
+            useEffect(() => {
+                if (!chartRef.current || !quarters) return;
+                const container = chartRef.current; const margin = { top: 20, right: 70, bottom: 40, left: 30 };
+                const width = container.clientWidth - margin.left - margin.right; const height = 300 - margin.top - margin.bottom;
+                d3.select(container).selectAll("*").remove();
+                const svg = d3.select(container).append("svg").attr("width", width + margin.left + margin.right).attr("height", height + margin.top + margin.bottom).append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+                const x = d3.scalePoint().domain(quarters.map(d => d.name)).range([0, width]);
+                const activeValues = quarters.map(d => type === 'PER' ? d.per : d.pbv);
+                const y = d3.scaleLinear().domain([Math.min(d3.min(activeValues), mean - 2.5 * sd) * 0.85, Math.max(d3.max(activeValues), mean + 2.5 * sd) * 1.15]).range([height, 0]);
+                const line = d3.line().x(d => x(d.name)).y(d => y(type === 'PER' ? d.per : d.pbv)).curve(d3.curveMonotoneX);
+                svg.append("path").datum(quarters).attr("fill", "none").attr("stroke", "#00F0FF").attr("stroke-width", 2).attr("d", line);
+            }, [quarters, mean, sd, type]);
+            return (
+                <div className="flex-1 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/50">
+                    <div className="flex justify-between items-center mb-4"><h4 className="text-xl font-black text-white italic">{type}</h4><div className="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">CUR: <span className="text-primary">{current.toFixed(2)}x</span></div></div>
+                    <div ref={chartRef} className="w-full h-[300px]"></div>
+                </div>
+            );
+        };
+
+        const DragonValuationChart = ({ ticker, stocks }) => {
+            const stock = (ticker === 'IHSG') ? { t: "IHSG", sector: "COMPOSITE", ap: 7240 } : (stocks.find(s => s.t === ticker) || (stocks && stocks[0]) || { sector: "FINANCE", ap: 1500 });
+            const data = useMemo(() => {
+                const quarters = []; const now = new Date(); let seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                const random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+                for (let i = 11; i >= 0; i--) quarters.push({ name: `Q${Math.floor(i/3)+1}`, netflow: (random() - 0.5) * 50 });
+                return { quarters };
+            }, [ticker]);
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="p-8 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden relative min-h-[400px]">
+                        <div className="flex justify-around items-end h-[300px] gap-2">{data.quarters.map((q, i) => (<div key={i} className="flex flex-col items-center flex-1 group"><div className={`w-full rounded-t-lg ${q.netflow > 0 ? 'bg-primary/40' : 'bg-danger/40'}`} style={{ height: `${Math.abs(q.netflow) * 4}%` }}></div><span className="text-[8px] text-slate-600 mt-4">{q.name}</span></div>))}</div>
+                        <div className="absolute bottom-16 left-0 w-full h-[1px] bg-slate-700"></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const OrderbookView = ({ stocks, activeTicker }) => {
+            if (!stocks || stocks.length === 0) {
+                return (
+                    <div className="flex flex-col items-center justify-center p-20 bg-[#0B121E] rounded-[2.5rem] border border-slate-800">
+                        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">Loading Orderbook Matrix...</h3>
+                    </div>
+                );
+            }
+            
+            const stock = (activeTicker === 'IHSG') 
+                ? { t: "IHSG", ap: 7240, sector: "COMPOSITE", pct: 0.45 }
+                : (stocks.find(s => s.t === activeTicker) || stocks[0]);
+            
+            const generateDragonSignal = useCallback((ticker) => {
+                let hash = 0;
+                for (let i = 0; i < ticker.length; i++) hash = ((hash << 5) - hash) + ticker.charCodeAt(i);
+                const seed = Math.abs(hash);
+                
+                const isIHSG = ticker === 'IHSG';
+                const volume = isIHSG ? 120000 : (seed % 1000) + 500;
+                const value = isIHSG ? 950 : (seed % 100) + 10;
+                const price = stock.ap || 1000;
+                const s1 = Math.round(price * 0.975);
+                const s2 = Math.round(price * 0.95);
+                const r1 = Math.round(price * 1.025);
+                
+                return { volume, value, s1, s2, r1 };
+            }, [stock.ap]);
+
+            const signal = generateDragonSignal(activeTicker);
+
+            return (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="bg-[#0B121E] rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl relative">
+                        <div className="p-6 border-b border-slate-800 bg-[#0F172A]/80 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-warning/10 border border-warning/20 flex items-center justify-center">
+                                <Icon name="layers" className="text-warning w-5 h-5 shadow-[0_0_10px_rgba(255,193,7,0.5)]" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-white uppercase tracking-widest leading-none mb-1">Orderbook Deep-Flow Matrix</h3>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Ticker: {activeTicker} | Real-Time Market Depth & Liquidity</p>
+                            </div>
+                        </div>
+
+                        <div className="p-8">
+                            <div className="grid grid-cols-3 gap-8 mb-8 pb-8 border-b border-slate-800/50">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Open</span><span className="text-sm font-black text-danger">{signal.s1 + 50}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">High</span><span className="text-sm font-black text-danger">{signal.r1 + 20}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Low</span><span className="text-sm font-black text-danger">{signal.s2 - 10}</span></div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Prev</span><span className="text-sm font-black text-slate-300">{Math.round(stock.ap * 0.98)}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">ARA</span><span className="text-sm font-black text-success">{Math.round(stock.ap * 1.25)}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">ARB</span><span className="text-sm font-black text-danger">{Math.round(stock.ap * 0.75)}</span></div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Lot</span><span className="text-sm font-black text-danger">{signal.volume} M</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Val</span><span className="text-sm font-black text-danger">{signal.value} B</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-[10px] font-black text-slate-500 uppercase">Avg</span><span className="text-sm font-black text-warning">{Math.round(stock.ap * 1.01)}</span></div>
+                                </div>
+                            </div>
+
+                            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/50">
+                                <table className="w-full text-[11px] font-black border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-900/80 text-slate-500 uppercase tracking-widest text-[9px] border-b border-slate-800">
+                                            <th className="p-3 text-center">Freq</th>
+                                            <th className="p-3 text-center">Lot</th>
+                                            <th className="p-3 text-center text-primary bg-primary/5">Bid</th>
+                                            <th className="p-3 text-center text-warning bg-warning/5">Offer</th>
+                                            <th className="p-3 text-center">Lot</th>
+                                            <th className="p-3 text-center">Freq</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Array.from({ length: 14 }).map((_, i) => {
+                                            const bidPrice = Math.round(stock.ap - (i * 10) - (i === 0 ? 0 : 5));
+                                            const offerPrice = Math.round(stock.ap + (i * 10) + 5);
+                                            const bidLot = Math.round((20000 / (i + 1)) + (Math.sin(i) * 500));
+                                            const offerLot = Math.round((15000 / (i + 1)) + (Math.cos(i) * 500));
+                                            const bidFreq = Math.round((500 / (i + 1)) + (Math.sin(i) * 50));
+                                            const offerFreq = Math.round((400 / (i + 1)) + (Math.cos(i) * 40));
+                                            
+                                            return (
+                                                <tr key={i} className="border-b border-slate-800/30 hover:bg-white/5 transition-all group">
+                                                    <td className="p-3 text-center text-primary/70">{bidFreq.toLocaleString()}</td>
+                                                    <td className="p-3 text-center relative overflow-hidden">
+                                                        <div className="absolute top-0 right-0 h-full bg-danger/10 transition-all duration-1000" style={{ width: `${Math.min(100, (bidLot / 25000) * 100)}%` }}></div>
+                                                        <span className="relative z-10 text-slate-300">{bidLot.toLocaleString()}</span>
+                                                    </td>
+                                                    <td className="p-3 text-center text-danger bg-danger/5 group-hover:bg-danger/10 font-black">{bidPrice.toLocaleString()}</td>
+                                                    <td className="p-3 text-center text-success bg-success/5 group-hover:bg-success/10 font-black">{offerPrice.toLocaleString()}</td>
+                                                    <td className="p-3 text-center relative overflow-hidden">
+                                                        <div className="absolute top-0 left-0 h-full bg-success/10 transition-all duration-1000" style={{ width: `${Math.min(100, (offerLot / 25000) * 100)}%` }}></div>
+                                                        <span className="relative z-10 text-slate-300">{offerLot.toLocaleString()}</span>
+                                                    </td>
+                                                    <td className="p-3 text-center text-success/70">{offerFreq.toLocaleString()}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    <tfoot className="bg-slate-900/50 text-white uppercase tracking-tighter">
+                                        <tr className="border-t-2 border-slate-700">
+                                            <th className="p-4 text-center text-slate-500">Total Bid</th>
+                                            <th className="p-4 text-center border-r border-slate-800 text-lg">{(Math.random()*500).toFixed(1)}K</th>
+                                            <th className="p-4 text-center bg-slate-800/50" colSpan="2">LIQUIDITY MATRIX</th>
+                                            <th className="p-4 text-center border-l border-slate-800 text-lg">{(Math.random()*500).toFixed(1)}K</th>
+                                            <th className="p-4 text-center text-slate-500">Total Offer</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
