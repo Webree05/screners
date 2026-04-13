@@ -608,7 +608,7 @@
                 { id: "Watchlist", label: "Watchlist", icon: "eye" },
                 { id: "Screener", label: "Screener", icon: "filter", subTabs: [
                     { id: "InflowOutflow", label: "V3.0 Analyzer" },
-                    { id: "CatchDragon", label: "Dragon Flow" },
+                    { id: "DragonFlow", label: "Dragon Flow" },
                     { id: "BrokerSummary", label: "Broker Summary" },
                     { id: "BidOffer", label: "BidOffer SMC" }
                 ]},
@@ -779,9 +779,7 @@
                                                 <span className="text-[10px] font-black text-white uppercase">{idxVal.sector}</span>
                                                 <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${idxVal.status === 'Undervalued' ? 'bg-success/20 text-success' : idxVal.status === 'Overvalued' ? 'bg-danger/20 text-danger' : 'bg-warning/20 text-warning'}`}>{idxVal.status}</div>
                                             </div>
-                                            <div className="grid grid-cols-3 gap-2 text-center">
-                                                <div><div className="text-[8px] text-slate-500 uppercase">PER</div><div className="text-[10px] font-bold text-slate-300">{idxVal.per.toFixed(1)}x</div></div>
-                                                <div><div className="text-[8px] text-slate-500 uppercase">PBV</div><div className="text-[10px] font-bold text-slate-300">{idxVal.pbv.toFixed(1)}x</div></div>
+                                            <div className="grid grid-cols-1 gap-2 text-center">
                                                 <div><div className="text-[8px] text-slate-500 uppercase">DY</div><div className="text-[10px] font-bold text-slate-300">{idxVal.dy.toFixed(1)}%</div></div>
                                             </div>
                                         </div>
@@ -1615,7 +1613,7 @@
             );
         };
 
-        const CatchTheDragonView = ({ stocks, watchlist, toggleWatchlist, activeTicker, setActiveTicker }) => {
+        const DragonFlowView = ({ stocks, watchlist, toggleWatchlist, activeTicker, setActiveTicker }) => {
             if (!stocks || stocks.length === 0) {
                 return (
                     <div className="flex flex-col items-center justify-center p-20 bg-[#0B121E] rounded-[2.5rem] border border-slate-800">
@@ -1670,7 +1668,7 @@
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
                         <div className="relative z-10">
                             <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase flex items-center gap-3">
-                                Catch The <span className="text-primary italic">Dragon</span> Intelligence Matrix
+                                <span className="text-primary italic">Dragon Flow</span> Intelligence Matrix
                             </h2>
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Deep Hierarchical Market Analysis Engine v5.0</p>
                         </div>
@@ -2599,7 +2597,7 @@
                             {activeTab === "Screener" && (
                                 <React.Fragment>
                                     {activeScreenerTab === "InflowOutflow" && <ScreenerView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
-                                    {activeScreenerTab === "CatchDragon" && <CatchTheDragonView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
+                                    {activeScreenerTab === "DragonFlow" && <DragonFlowView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
                                     {activeScreenerTab === "BrokerSummary" && <BrokerSummaryView stocks={displayStocks} watchlist={watchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
                                     {activeScreenerTab === "BidOffer" && <OrderbookView stocks={displayStocks} activeTicker={activeTicker} />}
                                 </React.Fragment>
