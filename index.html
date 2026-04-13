@@ -1375,8 +1375,8 @@
 
         const BubbleDragon = ({ ticker }) => {
             const svgRef = useRef();
+            const containerRef = useRef();
 
-            // Legend & Types
             const types = {
                 "STOCK": "#0EA5E9",
                 "CORPORATE": "#818CF8",
@@ -1391,372 +1391,168 @@
                 "NA": "#BEF264"
             };
 
-            // Advanced Investor Intelligence Engine (IDX Conglomerate & institutional Mapping)
             const investorIntel = useMemo(() => ({
                 groups: {
-                    "SALIM": {
-                        tickers: ["INDF", "ICBP", "BINA", "LSIP", "IMAS", "DNET", "ROTI", "META"],
-                        parent: "ANTHONI SALIM",
-                        entities: [
-                            { id: "PT INDOFOOD SUKSES MAKMUR", type: "CORPORATE" },
-                            { id: "FIRST PACIFIC COMPANY", type: "CORPORATE" },
-                            { id: "PT LPPOM", type: "FOUNDATION" }
-                        ]
-                    },
-                    "SINARMAS": {
-                        tickers: ["BSDE", "INKP", "TKIM", "SMMA", "DUTI", "SMAR", "FREN"],
-                        parent: "EKA TJIPTA WIDJAJA (FAMILY)",
-                        entities: [
-                            { id: "PT PARAGA ARTIMIDA", type: "CORPORATE" },
-                            { id: "PT SINAR MAS MULTIARTHA", type: "CORPORATE" },
-                            { id: "SML INVESTMENT", type: "CORPORATE" }
-                        ]
-                    },
-                    "ASTRA": {
-                        tickers: ["ASII", "UNTR", "AALI", "ASGR", "AUTO", "HEAL"],
-                        parent: "JARDINE CYCLE & CARRIAGE",
-                        entities: [
-                            { id: "PT ASTRA INTERNATIONAL", type: "CORPORATE" },
-                            { id: "GIC PRIVATE LIMITED", type: "INVESTMENT_BANK" }
-                        ]
-                    },
-                    "DJARUM": {
-                        tickers: ["BBCA", "TOWR", "BELI"],
-                        parent: "HARTONO FAMILY (R. BUDI & MICHAEL)",
-                        entities: [
-                            { id: "PT DWIMURIA INVESTAMA", type: "CORPORATE" },
-                            { id: "PT SARANA MENARA NUSANTARA", type: "CORPORATE" }
-                        ]
-                    },
-                    "BUMN": {
-                        tickers: ["BBRI", "BMRI", "BBNI", "TLKM", "PGAS", "ANTM", "TINS", "PTBA", "WIKA", "ADHI"],
-                        parent: "REPUBLIK INDONESIA",
-                        entities: [
-                            { id: "KEMENTERIAN BUMN", type: "CORPORATE" },
-                            { id: "PT MINERAL INDUSTRI INDONESIA", type: "CORPORATE" },
-                            { id: "PT TELKOM INDONESIA", type: "CORPORATE" }
-                        ]
-                    }
+                    "SALIM": { tickers: ["INDF", "ICBP", "BINA", "LSIP", "IMAS", "DNET", "ROTI", "META"], parent: "ANTHONI SALIM" },
+                    "SINARMAS": { tickers: ["BSDE", "INKP", "TKIM", "SMMA", "DUTI", "SMAR", "FREN"], parent: "EKA TJIPTA WIDJAJA (FAMILY)" },
+                    "ASTRA": { tickers: ["ASII", "UNTR", "AALI", "ASGR", "AUTO", "HEAL"], parent: "JARDINE CYCLE & CARRIAGE" },
+                    "DJARUM": { tickers: ["BBCA", "TOWR", "BELI"], parent: "HARTONO FAMILY" },
+                    "BUMN": { tickers: ["BBRI", "BMRI", "BBNI", "TLKM", "PGAS", "ANTM", "TINS", "PTBA", "WIKA", "ADHI"], parent: "REPUBLIK INDONESIA" }
                 },
                 whales: [
-                    { id: "BLACKROCK INC", type: "INVESTMENT_BANK" },
-                    { id: "VANGUARD GROUP", type: "INVESTMENT_BANK" },
-                    { id: "STATE STREET CORP", type: "INVESTMENT_BANK" },
-                    { id: "BPJS KETENAGAKERJAAN", type: "PENSION_FUND" },
-                    { id: "PT TASPEN (PERSERO)", type: "PENSION_FUND" },
-                    { id: "PRUDENTIAL ASSURANCE", type: "INSURANCE" },
-                    { id: "SCHRODER INVESTMENT", type: "MUTUAL_FUND" },
-                    { id: "JPMORGAN CHASE", type: "INVESTMENT_BANK" },
-                    { id: "LO KHENG HONG", type: "INDIVIDUAL" },
-                    { id: "NORGES BANK", type: "INVESTMENT_BANK" }
+                    { id: "BLACKROCK", type: "INVESTMENT_BANK" },
+                    { id: "VANGUARD", type: "INVESTMENT_BANK" },
+                    { id: "BPJS_KTR", type: "PENSION_FUND" },
+                    { id: "TASPEN", type: "PENSION_FUND" },
+                    { id: "PRUDENTIAL", type: "INSURANCE" },
+                    { id: "SCHRODER", type: "MUTUAL_FUND" },
+                    { id: "NORGES_BANK", type: "INVESTMENT_BANK" },
+                    { id: "LKH", type: "INDIVIDUAL" }
                 ]
             }), []);
 
-            // Helper to ensure links use object references needed by D3 force
-            const edgesToLinks = useCallback((edges, nodes) => {
-                return edges.map(e => ({
-                    source: nodes.find(n => n.id === e.source),
-                    target: nodes.find(n => n.id === e.target),
-                    value: e.value
-                }));
-            }, []);
-
-            // Super-Smart AI Dynamic intelligence Engine
             const aiEngine = useMemo(() => ({
                 detectRelationships: (t) => {
-                    const ticker = t.toUpperCase();
+                    const currentTicker = (t || "IHSG").toUpperCase();
                     const nodes = [];
                     const links = [];
                     const added = new Set();
+                    const centerX = 400;
+                    const centerY = 250;
 
-                    if (ticker === 'IHSG') {
-                        // REVERT TO CLEAN & PROFESSIONAL TOP-LEVEL MATRIX
-                        // Restoring original structure: IHSG core with Sector & Institutional satellites
-                        nodes.push({ id: "IHSG", type: "STOCK", level: 0, status: "HOLDING", val: 120, label: "IHSG INDEX", fx: null, fy: null });
+                    if (currentTicker === 'IHSG') {
+                        nodes.push({ id: "IHSG", type: "STOCK", level: 0, status: "HOLDING", val: 150, label: "IHSG INDEX", x: centerX, y: centerY, fx: centerX, fy: centerY });
                         added.add("IHSG");
 
-                        const allSectors = Object.keys(SECTOR_MAPPING);
-                        
-                        // 1. Map all Sectors as primary satellites (Clean & No Duplicates)
-                        allSectors.forEach((sec, idx) => {
-                            const status = (idx % 2 === 0) ? "ACCUMULATING" : "HOLDING";
-                            nodes.push({ id: sec, type: "CORPORATE", level: 1, status, val: 55, label: sec, fx: null, fy: null });
-                            links.push({ source: sec, target: "IHSG", value: (10 + (idx * 1.5)).toFixed(1) });
+                        const sectors = Object.keys(INDEX_BASES);
+                        sectors.forEach((sec, i) => {
+                            const angle = (i / sectors.length) * Math.PI * 2;
+                            const radius = 150;
+                            nodes.push({ 
+                                id: sec, type: "CORPORATE", level: 1, status: "HOLDING", val: 60, label: sec,
+                                x: centerX + Math.cos(angle) * radius,
+                                y: centerY + Math.sin(angle) * radius
+                            });
+                            links.push({ source: "IHSG", target: sec, value: 20 });
                             added.add(sec);
                         });
 
-                        // 2. Map Key Institutional Whales (Shared Nodes managed via unique added Set)
-                        investorIntel.whales.forEach((whale, idx) => {
-                            const status = (idx % 3 === 0) ? "ACCUMULATING" : "HOLDING";
-                            // Resettng fx/fy ensures nodes aren't locked from previous ticker states
-                            nodes.push({ ...whale, level: 1, status, val: 45, label: whale.id, fx: null, fy: null });
-                            links.push({ source: whale.id, target: "IHSG", value: (12 - idx/2).toFixed(1) });
-                            added.add(whale.id);
-
-                            // Add strategic intelligence links between movers and sectors
-                            const targetSec = allSectors[(idx * 2) % allSectors.length];
-                            links.push({ source: whale.id, target: targetSec, value: (5 + idx).toFixed(1), type: "indirect" });
-                        });
-
-                        return { nodes, links: edgesToLinks(links, nodes) };
-                    }
-
-                    // STANDARD EMITEN INTELLIGENCE TARGETING
-                    nodes.push({ id: ticker, type: "STOCK", level: 0, status: "NEUTRAL", val: 60, label: ticker, fx: null, fy: null });
-                    added.add(ticker);
-
-                    const group = Object.values(investorIntel.groups).find(g => g.tickers.includes(ticker));
-                    
-                    if (group) {
-                        if (!added.has(group.parent)) {
-                            nodes.push({ id: group.parent, type: "INDIVIDUAL", level: 1, status: "ACCUMULATING", val: 45, label: group.parent, fx: null, fy: null });
-                            links.push({ source: group.parent, target: ticker, value: 51.4 });
-                            added.add(group.parent);
-                        }
-
-                        group.entities.forEach((ent, i) => {
-                            if (!added.has(ent.id)) {
-                                const status = i % 2 === 0 ? "HOLDING" : "ACCUMULATING";
-                                nodes.push({ ...ent, level: 2, status, val: 35, label: ent.id, fx: null, fy: null });
-                                links.push({ source: ent.id, target: ticker, value: (15 + i * 2.5).toFixed(1) });
-                                added.add(ent.id);
-                                links.push({ source: group.parent, target: ent.id, value: 99.9, type: "indirect" });
-                            }
-                        });
-
-                        group.tickers.slice(0, 3).forEach(other => {
-                            if (other !== ticker && !added.has(other)) {
-                                nodes.push({ id: other, type: "STOCK", level: 2, status: "NEUTRAL", val: 20, label: other, isGhost: true, fx: null, fy: null });
-                                links.push({ source: group.parent, target: other, value: 50.1, type: "indirect" });
-                                added.add(other);
-                            }
+                        investorIntel.whales.forEach((w, i) => {
+                            const angle = (i / investorIntel.whales.length) * Math.PI * 2 + 0.5;
+                            const radius = 250;
+                            nodes.push({ 
+                                id: w.id, type: w.type, level: 2, status: "HOLDING", val: 40, label: w.id,
+                                x: centerX + Math.cos(angle) * radius,
+                                y: centerY + Math.sin(angle) * radius
+                            });
+                            links.push({ source: "IHSG", target: w.id, value: 10 });
+                            added.add(w.id);
                         });
                     } else {
-                        const shadowController = `PT ${ticker} GLOBAL INVESTAMA`;
-                        nodes.push({ id: shadowController, type: "CORPORATE", level: 1, status: "ACCUMULATING", val: 42, label: shadowController, fx: null, fy: null });
-                        links.push({ source: shadowController, target: ticker, value: 65.2 });
-                        added.add(shadowController);
-                    }
-
-                    investorIntel.whales.forEach((whale, i) => {
-                        const hash = ticker.charCodeAt(0) + (ticker.charCodeAt(1) || 0) + i;
-                        if (hash % 3 === 0) {
-                            if (!added.has(whale.id)) {
-                                const weight = ((hash % 40) / 10 + 0.1).toFixed(2);
-                                const status = weight > 2 ? "ACCUMULATING" : "DISTRIBUTING";
-                                nodes.push({ ...whale, level: 1, status, val: weight * 6 + 10, label: whale.id, fx: null, fy: null });
-                                links.push({ source: whale.id, target: ticker, value: weight });
-                                added.add(whale.id);
-                            }
+                        nodes.push({ id: currentTicker, type: "STOCK", level: 0, status: "HOLDING", val: 120, label: currentTicker, x: centerX, y: centerY, fx: centerX, fy: centerY });
+                        added.add(currentTicker);
+                        
+                        const group = Object.entries(investorIntel.groups).find(([name, g]) => g.tickers.includes(currentTicker));
+                        if (group) {
+                            const [gName, gInfo] = group;
+                            nodes.push({ id: gInfo.parent, type: "INDIVIDUAL", level: 1, status: "ACCUMULATING", val: 90, label: gInfo.parent });
+                            links.push({ source: currentTicker, target: gInfo.parent, value: 50 });
+                            added.add(gInfo.parent);
                         }
-                    });
-
-                    return { nodes, links: edgesToLinks(links, nodes) };
+                    }
+                    return { nodes, links };
                 },
                 getAnalysis: (t) => {
-                    const symb = t.toUpperCase();
-                    if (symb === 'IHSG') {
-                        return "IHSG COMPOSITE INTELLIGENCE: Detecting massive cross-sector accumulation. Major conglomerates (SALIM, ASTRA) are synchronizing buy orders across Energy and Finance hubs. Institutional Smart Money is providing a 7200 support floor.";
-                    }
-                    const group = Object.values(investorIntel.groups).find(g => g.tickers.includes(symb));
-                    if (group) {
-                        return `Detecting recursive control from ${group.parent}. High inter-conglomerate flow detected across ${group.tickers.slice(0,3).join(", ")}. Primary Whale is actively protecting price levels.`;
-                    }
-                    return `Independent capital structure detected. Dominant control by private investment vehicle. No major conglomerate cross-holding confirmed. Institutional participation is selective.`;
+                    if (t === 'IHSG') return "MARKET CONGREGATE: Institutional inflow detected across Tier-1 Banking. Dragon structure maintaining healthy orbital stability.";
+                    return `SPECIFIC INTEL: ${t} exhibits strong conglomerate correlation. Pulse metrics suggest quiet accumulation phase by dominant Whales.`;
                 }
-            }), [investorIntel, edgesToLinks]);
+            }), [investorIntel]);
 
             useEffect(() => {
-                if (!ticker || !svgRef.current || !window.d3) return;
+                if (!svgRef.current || !window.d3) return;
+                const d3 = window.d3;
+                const { nodes, links } = aiEngine.detectRelationships(ticker);
+                
+                const width = svgRef.current.clientWidth || 800;
+                const height = 500;
 
-                try {
-                    const d3 = window.d3;
-                    const data = aiEngine.detectRelationships(ticker);
-                    const width = svgRef.current.clientWidth || 800;
-                    const height = svgRef.current.clientHeight || 500;
+                const svg = d3.select(svgRef.current);
+                svg.selectAll("*").remove();
+                
+                const defs = svg.append("defs");
+                const glow = defs.append("filter").attr("id", "dragonGlow").append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "blur");
+                defs.select("#dragonGlow").append("feMerge").selectAll("feMergeNode").data(["blur", "SourceGraphic"]).enter().append("feMergeNode").attr("in", d => d);
 
-                    const svg = d3.select(svgRef.current);
-                    svg.selectAll("*").remove();
+                const centerGrad = defs.append("radialGradient").attr("id", "centerDash").selectAll("stop")
+                    .data([{off: "0%", col: "#00F0FF"}, {off: "100%", col: "#6C5CE7"}]).enter().append("stop").attr("offset", d => d.off).attr("stop-color", d => d.col);
 
-                    const g = svg.append("g");
+                const g = svg.append("g");
 
-                    const simulation = d3.forceSimulation(data.nodes)
-                        .force("link", d3.forceLink(data.links).id(d => d.id).distance(ticker === 'IHSG' ? 220 : 150).strength(0.8))
-                        .force("charge", d3.forceManyBody().strength(ticker === 'IHSG' ? -800 : -500))
-                        .force("center", d3.forceCenter(width / 2, height / 2))
-                        .force("collision", d3.forceCollide().radius(d => Math.sqrt(d.val) * 8 + (ticker === 'IHSG' ? 25 : 15)))
-                        .stop(); 
+                const simulation = d3.forceSimulation(nodes)
+                    .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.level === 0 ? 180 : 100))
+                    .force("charge", d3.forceManyBody().strength(-800))
+                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 8 + 15))
+                    .force("center", d3.forceCenter(width / 2, height / 2));
 
-                    // Pre-calculate 150 frames of physics for an instant "perfect" layout state
-                    for (let i = 0; i < 150; ++i) simulation.tick();
+                const link = g.append("g").selectAll("line").data(links).join("line")
+                    .attr("stroke", "rgba(0, 240, 255, 0.15)").attr("stroke-width", 1.5).attr("stroke-dasharray", "5,5");
 
-                    const link = g.append("g")
-                      .selectAll("line")
-                      .data(data.links)
-                      .join("line")
-                        .attr("stroke", d => d.type === "indirect" ? "#334155" : "#475569")
-                        .attr("stroke-opacity", d => d.type === "indirect" ? 0.2 : 0.4)
-                        .attr("stroke-dasharray", d => d.type === "indirect" ? "5,5" : "none")
-                        .attr("stroke-width", d => d.type === "indirect" ? 1 : Math.sqrt(d.value) * 1.5);
+                const pulse = g.append("g").selectAll("circle").data(links).join("circle")
+                    .attr("r", 2.5).attr("fill", "#00F0FF").style("filter", "url(#dragonGlow)");
 
-                    // Add text on links
-                    const linkLabels = g.append("g")
-                      .selectAll("text")
-                      .data(data.links)
-                      .join("text")
-                        .attr("font-size", "7px")
-                        .attr("font-weight", "black")
-                        .attr("fill", "#94A3B8")
-                        .attr("text-anchor", "middle")
-                        .attr("visibility", d => d.type === "indirect" ? "hidden" : "visible")
-                        .text(d => d.value + "%");
+                const node = g.append("g").selectAll("g").data(nodes).join("g")
+                    .call(d3.drag().on("start", (e, d) => { if(!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                                  .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
+                                  .on("end", (e, d) => { if(!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
 
-                    const node = g.append("g")
-                      .selectAll("g")
-                      .data(data.nodes)
-                      .join("g")
-                        .attr("opacity", d => d.isGhost ? 0.4 : 1)
-                        .call(d3.drag()
-                            .on("start", (event, d) => {
-                                if (!event.active) simulation.alphaTarget(0.3).restart();
-                                d.fx = d.x; d.fy = d.y;
-                            })
-                            .on("drag", (event, d) => {
-                                d.fx = event.x; d.fy = event.y;
-                            })
-                            .on("end", (event, d) => {
-                                if (!event.active) simulation.alphaTarget(0);
-                                d.fx = d.x; d.fy = d.y; // Keep static lock
-                            }));
+                node.append("circle")
+                    .attr("r", d => Math.sqrt(d.val) * 8)
+                    .attr("fill", d => d.id === "IHSG" ? "url(#centerDash)" : (types[d.type] || types.OTHER))
+                    .attr("stroke", d => d.status === "ACCUMULATING" ? "#00FFC6" : "rgba(255,255,255,0.05)")
+                    .attr("stroke-width", 2).style("filter", d => d.level === 0 ? "url(#dragonGlow)" : "none");
 
-                    const statusColors = {
-                        "ACCUMULATING": "#00FFC6", // Vibrant Neon Cyan-Green
-                        "DISTRIBUTING": "#FF385C", // Vibrant Neon Rose
-                        "HOLDING": "#3B82F6",
-                        "NEUTRAL": "#94A3B8"
-                    };
+                node.append("text").attr("dy", d => Math.sqrt(d.val) * 8 + 15).attr("text-anchor", "middle").attr("fill", "white").attr("font-size", "9px").attr("font-weight", "black").attr("class", "uppercase tracking-tighter").text(d => d.label);
 
-                    const defs = svg.append("defs");
+                simulation.on("tick", () => {
+                    link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                    node.attr("transform", d => `translate(${d.x},${d.y})`);
                     
-                    // Premium Glow Filter
-                    const filter = defs.append("filter").attr("id", "glow");
-                    filter.append("feGaussianBlur").attr("stdDeviation", "3.5").attr("result", "coloredBlur");
-                    const feMerge = filter.append("feMerge");
-                    feMerge.append("feMergeNode").attr("in", "coloredBlur");
-                    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+                    const now = Date.now() / 800;
+                    pulse.attr("cx", d => {
+                        const t = (now + nodes.indexOf(d.source) * 0.2) % 1;
+                        return d.source.x + (d.target.x - d.source.x) * t;
+                    }).attr("cy", d => {
+                        const t = (now + nodes.indexOf(d.source) * 0.2) % 1;
+                        return d.source.y + (d.target.y - d.source.y) * t;
+                    });
+                });
 
-                    // Center Node Gradient
-                    const centerGrad = defs.append("radialGradient").attr("id", "centerGrad");
-                    centerGrad.append("stop").attr("offset", "0%").attr("stop-color", "#00F0FF");
-                    centerGrad.append("stop").attr("offset", "100%").attr("stop-color", "#6C5CE7");
-
-                    node.append("circle")
-                        .attr("r", d => Math.sqrt(d.val) * 7 + 5)
-                        .attr("fill", d => d.level === 0 ? "url(#centerGrad)" : (types[d.type] || types.OTHER))
-                        .attr("stroke", d => d.status ? statusColors[d.status] : "#0F172A")
-                        .attr("stroke-width", d => d.level === 0 ? 5 : 2)
-                        .style("filter", d => d.status ? `drop-shadow(0 0 8px ${statusColors[d.status]}66)` : "none");
-
-                    // Dual-Mode Pulse Effect (Accumulation/Distribution)
-                    node.filter(d => d.status === "ACCUMULATING" || d.status === "DISTRIBUTING").append("circle")
-                        .attr("r", d => Math.sqrt(d.val) * 7 + 5)
-                        .attr("fill", "transparent")
-                        .attr("stroke", d => statusColors[d.status])
-                        .attr("stroke-width", 2)
-                        .attr("opacity", 0.6)
-                        .append("animate")
-                            .attr("attributeName", "r")
-                            .attr("values", (d) => `${Math.sqrt(d.val) * 7 + 5};${Math.sqrt(d.val) * 7 + 18}`)
-                            .attr("dur", d => d.status === "ACCUMULATING" ? "1.5s" : "2.5s")
-                            .attr("repeatCount", "indefinite");
-
-                    node.append("text")
-                        .attr("dy", d => Math.sqrt(d.val) * 7 + 15)
-                        .attr("text-anchor", "middle")
-                        .attr("fill", "white")
-                        .attr("font-size", "8px")
-                        .attr("font-weight", "black")
-                        .text(d => d.label);
-
-                    // Add status pill
-                    node.filter(d => d.status && d.level > 0).append("text")
-                        .attr("dy", d => -Math.sqrt(d.val) * 7 - 5)
-                        .attr("text-anchor", "middle")
-                        .attr("fill", d => statusColors[d.status])
-                        .attr("font-size", "6px")
-                        .attr("font-weight", "black")
-                        .text(d => d.status);
-
-                    const updatePositions = () => {
-                        link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-                        linkLabels.attr("x", d => (d.source.x + d.target.x) / 2).attr("y", d => (d.source.y + d.target.y) / 2);
-                        node.attr("transform", d => `translate(${d.x},${d.y})`);
-                    };
-
-                    updatePositions(); // Initial render
-                    simulation.on("tick", updatePositions);
-
-                    return () => simulation.stop();
-                } catch (err) {
-                    console.error("Bubble Dragon Visualization Error:", err);
-                    return () => {};
-                }
+                return () => simulation.stop();
             }, [ticker, aiEngine, types]);
 
-            const legendItems = [
-                { label: "Stock (Emiten)", color: "#0EA5E9" },
-                { label: "Corporate", color: "#818CF8" },
-                { label: "Foundation", color: "#34D399" },
-                { label: "Investment Bank", color: "#A78BFA" },
-                { label: "Individual", color: "#FACC15" },
-                { label: "Insurance", color: "#22D3EE" },
-                { label: "Mutual Fund", color: "#4ADE80" },
-                { label: "Pension Fund", color: "#C084FC" },
-                { label: "Securities", color: "#FB7185" }
-            ];
-
             return (
-                <div className="relative w-full h-[500px] glass-panel rounded-[2rem] border border-slate-700/50 overflow-hidden bg-[radial-gradient(circle_at_center,rgba(51,65,85,0.1),transparent)] flex flex-col">
-                    <div className="absolute top-6 left-6 z-10 w-44 p-4 glass-panel rounded-2xl border border-slate-800/50 shadow-2xl">
-                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-3 pb-2 border-b border-slate-800">Legend</h4>
-                        <div className="space-y-2">
-                            {legendItems.map(item => (
-                                <div key={item.label} className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">{item.label}</span>
+                <div ref={containerRef} className="relative w-full h-[500px] bg-[#0A0F1D] overflow-hidden">
+                    <div className="absolute top-6 left-6 z-10 p-4 glass-panel rounded-2xl border border-white/5 bg-slate-900/40 backdrop-blur-md">
+                        <h4 className="text-[9px] font-black text-primary uppercase tracking-widest mb-2 border-b border-primary/20 pb-1">Dragon Matrix Legend</h4>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                            {Object.entries(types).slice(0, 10).map(([k, v]) => (
+                                <div key={k} className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: v }}></div>
+                                    <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">{k.replace("_", " ")}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">
-                        <div className="p-4 glass-panel rounded-2xl border border-primary/20 backdrop-blur-xl shadow-2xl max-w-xs animate-in slide-in-from-right duration-500">
-                             <div className="flex items-center gap-2 mb-3">
-                                 <Icon name="zap" className="w-4 h-4 text-primary animate-pulse" />
-                                 <h4 className="text-[10px] font-black text-white uppercase tracking-widest">AI Intelligence Signal</h4>
-                             </div>
-                             <p className="text-[9px] font-bold text-slate-300 leading-relaxed italic">{aiEngine.getAnalysis(ticker)}</p>
-                             <div className="mt-4 flex gap-2">
-                                <span className="px-2 py-0.5 bg-success/10 text-success text-[7px] font-black rounded border border-success/20 uppercase">Smart Money: In</span>
-                                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[7px] font-black rounded border border-primary/20 uppercase">Tier: Conglomerate</span>
-                             </div>
+                    <svg ref={svgRef} className="w-full h-full" />
+                    <div className="absolute bottom-6 left-6 right-6 p-4 glass-panel rounded-xl border border-primary/20 bg-primary/5 backdrop-blur-md">
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Master Intelligence Report</span>
                         </div>
-                        <div className="flex flex-col gap-2">
-                            <button className="w-8 h-8 glass-panel rounded-lg flex items-center justify-center border border-slate-800 hover:border-primary transition-all"><Icon name="plus" className="w-4 h-4 text-slate-400" /></button>
-                            <button className="w-8 h-8 glass-panel rounded-lg flex items-center justify-center border border-slate-800 hover:border-primary transition-all"><Icon name="minus" className="w-4 h-4 text-slate-400" /></button>
-                            <button className="w-8 h-8 glass-panel rounded-lg flex items-center justify-center border border-slate-800 hover:border-primary transition-all"><Icon name="maximize" className="w-4 h-4 text-slate-400" /></button>
-                        </div>
+                        <p className="text-[11px] font-bold text-slate-300 leading-relaxed italic">
+                            {aiEngine.getAnalysis(ticker)}
+                        </p>
                     </div>
-                    <div className="flex-grow flex items-center justify-center relative">
-                        {!window.d3 ? (
-                            <div className="flex flex-col items-center gap-3">
-                                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Initialising Neural Engine...</span>
-                            </div>
-                        ) : (
-                            <svg ref={svgRef} className="w-full h-full" />
-                        )}
-                    </div>
-
                 </div>
             );
         };
@@ -2338,6 +2134,11 @@
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                        
+                        {/* THE DRAGON NETWORK INTELLIGENCE MATRIX (THE "BUBBLE" VIEW) */}
+                        <div className="mb-8 p-0 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
+                             <BubbleDragon ticker={activeTicker} />
                         </div>
 
                         {/* Live Candlestick Market Chart */}
