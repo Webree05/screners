@@ -1489,44 +1489,40 @@
                 });
 
                 const simulation = d3.forceSimulation(nodes)
-                    .alphaDecay(0.06)
-                    .velocityDecay(0.4)
+                    .alphaDecay(0.12) // Faster settling
+                    .velocityDecay(0.6) // Higher friction
                     .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.source.ring === 0 ? 240 : 180).strength(1))
-                    .force("charge", d3.forceManyBody().strength(-1200))
-                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 6 + 35).iterations(2))
+                    .force("charge", d3.forceManyBody().strength(-600)) // Weaker repulsion for stability
+                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 6 + 40).iterations(3))
                     .force("center", d3.forceCenter(width / 2, height / 2));
 
-                // Anchor center nodes to prevent entire graph from drifting
+                // Anchor center nodes
                 nodes.forEach(d => {
                     if (d.ring === 0) { d.fx = width / 2; d.fy = height / 2; }
                 });
 
                 const container = svg.append("g");
                 
-                // Render Links
                 const link = container.append("g").selectAll("line").data(links).join("line")
                     .attr("stroke", d => d.source.type === 'WHALE' || d.target.type === 'WHALE' ? "rgba(245, 158, 11, 0.2)" : colors.LINK)
                     .attr("stroke-width", 1.5)
-                    .attr("stroke-dasharray", "4,6")
+                    .attr("stroke-dasharray", "8,8")
                     .style("opacity", 0.6);
 
-                // Animated Flow Particles
                 const particle = container.append("g").selectAll("circle").data(links).join("circle")
                     .attr("r", 2.5)
                     .attr("fill", d => d.source.type === 'WHALE' || d.target.type === 'WHALE' ? "#F59E0B" : colors.PULSE)
                     .style("filter", "url(#glow)");
                 
-                // Render Nodes
                 const node = container.append("g").selectAll("g").data(nodes).join("g")
                     .on("click", (e, d) => {
                         if (d.type === 'SECTOR') { setSelectedSector(d.id); setViewDepth('stocks'); }
                         else if (d.type === 'STOCK') { setSelectedStock(d.id); setViewDepth('whales'); }
-                        else if (d.type === 'WHALE') { /* Maybe show owner details? */ }
                     })
                     .style("cursor", d => d.type === 'IHSG' ? 'default' : 'pointer')
                     .call(d3.drag()
                         .on("start", (e, d) => { 
-                            if (!e.active) simulation.alphaTarget(0.2).restart(); 
+                            if (!e.active) simulation.alphaTarget(0.3).restart(); 
                             d.fx = d.x; d.fy = d.y; 
                         })
                         .on("drag", (e, d) => { 
@@ -1534,11 +1530,10 @@
                         })
                         .on("end", (e, d) => { 
                             if (!e.active) simulation.alphaTarget(0);
-                            if (d.ring !== 0) { d.fx = null; d.fy = null; } 
+                            if (d.ring !== 0) { d.fx = d.x; d.fy = d.y; } // Lock position after drag
                         })
                     );
 
-                // Node Circles (Multi-layered Glass Effect)
                 node.append("circle")
                     .attr("r", d => Math.sqrt(d.val) * 6)
                     .attr("fill", d => `url(#grad-${d.type.toLowerCase()})`)
@@ -1546,7 +1541,6 @@
                     .attr("stroke-width", 2)
                     .style("filter", d => d.id === ticker ? "url(#glow)" : "none");
 
-                // Hover Shine Effect
                 node.append("circle")
                     .attr("r", d => Math.sqrt(d.val) * 6 - 2)
                     .attr("fill", "transparent")
@@ -1554,36 +1548,22 @@
                     .attr("stroke-width", 1)
                     .attr("stroke-dasharray", d => `${Math.sqrt(d.val) * 10}, ${Math.sqrt(d.val) * 10}`);
 
-                // Labels
                 const texts = node.append("g").attr("class", "labels");
-                
-                texts.append("text")
-                    .attr("dy", d => Math.sqrt(d.val) * 6 + 25)
-                    .attr("text-anchor", "middle")
-                    .attr("fill", "white")
-                    .attr("font-size", d => d.type === 'IHSG' ? "14px" : "10px")
-                    .attr("font-weight", "black")
-                    .attr("class", "uppercase tracking-tighter")
-                    .text(d => d.label);
+                texts.append("text").attr("dy", d => Math.sqrt(d.val) * 6 + 25).attr("text-anchor", "middle").attr("fill", "white").attr("font-size", d => d.type === 'IHSG' ? "14px" : "10px").attr("font-weight", "black").attr("class", "uppercase tracking-tighter").text(d => d.label);
 
-                // Data Metrics (Growth/Pct)
-                node.append("text")
-                    .attr("dy", d => -Math.sqrt(d.val) * 6 - 8)
-                    .attr("text-anchor", "middle")
-                    .attr("fill", d => (d.growth && d.growth.includes('+')) || (d.pct > 0) ? '#10B981' : (d.type === 'WHALE' ? '#F59E0B' : '#EF4444'))
-                    .attr("font-size", "9px")
-                    .attr("font-weight", "black")
-                    .text(d => d.growth || (d.pct ? `${d.pct}%` : (d.desc || '')));
+                node.append("text").attr("dy", d => -Math.sqrt(d.val) * 6 - 8).attr("text-anchor", "middle").attr("fill", d => (d.growth && d.growth.includes('+')) || (d.pct > 0) ? '#10B981' : (d.type === 'WHALE' ? '#F59E0B' : '#EF4444')).attr("font-size", "9px").attr("font-weight", "black").text(d => d.growth || (d.pct ? `${d.pct}%` : (d.desc || '')));
 
-                simulation.on("tick", () => {
+                // Separate Animation Loop for Particles & Positional smoothness
+                const tickerLoop = d3.timer(() => {
+                    const t = (Date.now() / 2400) % 1;
                     link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-                    node.attr("transform", d => `translate(${d.x},${d.y})`);
-                    const t = (Date.now() / 2000) % 1;
                     particle.attr("cx", d => d.source.x + (d.target.x - d.source.x) * t).attr("cy", d => d.source.y + (d.target.y - d.source.y) * t);
+                    node.attr("transform", d => `translate(${d.x},${d.y})`);
                 });
 
-                return () => simulation.stop();
+                return () => { simulation.stop(); tickerLoop.stop(); };
             }, [ticker, aiEngine, viewDepth, stocks]);
+
 
             return (
                 <div ref={containerRef} className="relative w-full h-[600px] bg-[#05080F] overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl group/dragon">
