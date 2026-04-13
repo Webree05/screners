@@ -1457,7 +1457,7 @@
                     if (viewDepth === 'stocks') return `DEEP DIVE (${selectedSector}): Analyzing high-liquidity assets. Market makers footprint identified in top tickers.`;
                     return `WHALE TRACKER (${selectedStock}): Mapping institutional ownership chain. Significant accumulation by global custodial banks identified.`;
                 }
-            }), [viewDepth, selectedSector, selectedStock, stocks, investorIntel]);
+            }), [viewDepth, selectedSector, selectedStock, investorIntel]);
 
             const graphData = useMemo(() => aiEngine.detectRelationships(ticker), [aiEngine, ticker]);
 
