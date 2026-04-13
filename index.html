@@ -608,7 +608,7 @@
                 { id: "Watchlist", label: "Watchlist", icon: "eye" },
                 { id: "Screener", label: "Screener", icon: "filter", subTabs: [
                     { id: "InflowOutflow", label: "V3.0 Analyzer" },
-                    { id: "DragonFlow", label: "Dragon Flow" },
+                    { id: "DragonFlow", label: "Price Flow" },
                     { id: "BrokerSummary", label: "Broker Summary" },
                     { id: "BidOffer", label: "BidOffer SMC" }
                 ]},
@@ -1371,7 +1371,7 @@
             );
         };
 
-        const BubbleDragon = ({ ticker, stocks }) => {
+        const BubbleFlow = ({ ticker, stocks }) => {
             const svgRef = useRef();
             const containerRef = useRef();
             const [viewDepth, setViewDepth] = useState('sectors'); // 'sectors', 'stocks', 'whales'
@@ -1559,7 +1559,7 @@
 
 
             return (
-                <div ref={containerRef} className="relative w-full h-[600px] bg-[#05080F] overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl group/dragon">
+                <div ref={containerRef} className="relative w-full h-[600px] bg-[#05080F] overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl group/flow">
                     {/* Atmospheric Overlay */}
                     <div className="absolute inset-0 bg-radial-at-t from-primary/5 via-transparent to-transparent opacity-50 pointer-events-none"></div>
                     
@@ -1613,7 +1613,7 @@
             );
         };
 
-        const DragonFlowView = ({ stocks, watchlist, toggleWatchlist, activeTicker, setActiveTicker }) => {
+        const PriceFlowView = ({ stocks, watchlist, toggleWatchlist, activeTicker, setActiveTicker }) => {
             if (!stocks || stocks.length === 0) {
                 return (
                     <div className="flex flex-col items-center justify-center p-20 bg-[#0B121E] rounded-[2.5rem] border border-slate-800">
@@ -1627,7 +1627,7 @@
                 ? { t: "IHSG", ap: 7240, sector: "COMPOSITE", pct: 0.45, v: 12500000000 }
                 : (stocks.find(s => s.t === activeTicker) || stocks[0]);
             
-            const generateDragonSignal = useCallback((ticker) => {
+            const calculateFlowSignal = useCallback((ticker) => {
                 let hash = 0;
                 for (let i = 0; i < ticker.length; i++) hash = ((hash << 5) - hash) + ticker.charCodeAt(i);
                 const seed = Math.abs(hash);
@@ -1657,7 +1657,7 @@
                 const netFlow = isIHSG ? 245.5 : (seed % 40) - 15;
                 return { freeFloat, avg5dVal, buyPct, sellPct, s1, s2, r1, r2, entry, tp, sl, rr, isBullish, volume, value, frequency, netFlow };
             }, [stock.ap]);
-            const signal = generateDragonSignal(activeTicker);
+            const signal = calculateFlowSignal(activeTicker);
 
             const now = new Date();
 
@@ -1668,7 +1668,7 @@
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
                         <div className="relative z-10">
                             <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase flex items-center gap-3">
-                                <span className="text-primary italic">Dragon Flow</span> Intelligence Matrix
+                                <span className="text-primary italic">Price Flow</span> Intelligence Matrix
                             </h2>
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Deep Hierarchical Market Analysis Engine v5.0</p>
                         </div>
@@ -1698,7 +1698,7 @@
                     
                     {/* THE FLOW NETWORK INTELLIGENCE MATRIX (THE "BUBBLE" VIEW) */}
                     <div className="mb-8 p-0 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
-                         <BubbleDragon ticker={activeTicker} stocks={stocks} />
+                         <BubbleFlow ticker={activeTicker} stocks={stocks} />
                     </div>
 
                     {/* Live Candlestick Market Chart */}
@@ -1727,7 +1727,7 @@
 
                     {/* Market Matrix Rotation Flow Chart */}
                     <div className="mb-8 p-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
-                         <DragonValuationChart ticker={activeTicker} stocks={stocks} />
+                         <FlowAnalysisChart ticker={activeTicker} stocks={stocks} />
                     </div>
 
                     {/* Order Book (Bid/Offer) Section */}
@@ -1996,7 +1996,7 @@
             }, [activeTicker]);
             return (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <BubbleDragon ticker={activeTicker} stocks={stocks} />
+                    <BubbleFlow ticker={activeTicker} stocks={stocks} />
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                         <div className="lg:col-span-1"><Card title="Broker Filter" icon={<Icon name="repeat" />}><div className="space-y-4"><div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Pilih Emiten</label><select value={activeTicker} onChange={(e) => setActiveTicker(e.target.value)} className="w-full bg-slate-800 border-none text-white p-2 rounded-xl font-bold">{stocks.map(s => <option key={s.t} value={s.t}>{s.t}</option>)}</select></div><div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Set Tanggal Analysis</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-800 border-none text-white p-2 rounded-xl font-bold" /></div></div></Card></div>
                         <div className="lg:col-span-3"><Card title={"Broker Summary (Net Analysis) - " + activeTicker}><div className="overflow-x-auto"><table className="w-full text-left border-separate border-spacing-y-2"><thead><tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest"><th className="pb-4 pl-4">Broker</th><th className="pb-4">Buy Value</th><th className="pb-4">Sell Value</th><th className="pb-4">Avg Buy</th><th className="pb-4">Avg Sell</th><th className="pb-4 pr-4 text-right">Net Value</th></tr></thead><tbody>{data.map((b, i) => (<tr key={i} className="bg-slate-900/40 rounded-xl border border-slate-800"><td className="py-3 px-4 rounded-l-xl"><span className={`font-black tracking-widest ${Number(b.net) > 0 ? 'text-primary' : 'text-danger'}`}>{b.code}</span></td><td className="py-3">{b.buyVal}</td><td className="py-3">{b.sellVal}</td><td className="py-3">{b.buyAvg}</td><td className="py-3">{b.sellAvg}</td><td className={`py-3 px-4 text-right font-black rounded-r-xl ${Number(b.net) > 0 ? 'text-success' : 'text-danger'}`}>{Number(b.net) > 0 ? '+' : ''}{b.net}B</td></tr>))}</tbody></table></div></Card></div>
@@ -2037,7 +2037,7 @@
         };
 
 
-        const DragonValuationChart = ({ ticker, stocks }) => {
+        const FlowAnalysisChart = ({ ticker, stocks }) => {
             const stock = (ticker === 'IHSG') ? { t: "IHSG", sector: "COMPOSITE", ap: 7240 } : (stocks.find(s => s.t === ticker) || (stocks && stocks[0]) || { sector: "FINANCE", ap: 1500 });
             const data = useMemo(() => {
                 const quarters = []; const now = new Date(); let seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -2069,7 +2069,7 @@
                 ? { t: "IHSG", ap: 7240, sector: "COMPOSITE", pct: 0.45 }
                 : (stocks.find(s => s.t === activeTicker) || stocks[0]);
             
-            const generateDragonSignal = useCallback((ticker) => {
+            const calculateFlowSignal = useCallback((ticker) => {
                 let hash = 0;
                 for (let i = 0; i < ticker.length; i++) hash = ((hash << 5) - hash) + ticker.charCodeAt(i);
                 const seed = Math.abs(hash);
@@ -2085,7 +2085,7 @@
                 return { volume, value, s1, s2, r1 };
             }, [stock.ap]);
 
-            const signal = generateDragonSignal(activeTicker);
+            const signal = calculateFlowSignal(activeTicker);
 
             return (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -2476,7 +2476,7 @@
                     let status = "Fair", valRatio = per / base.histPe;
                     if (per < base.histPe && per/base.growth < 1 && pbv < base.histPbv) status = "Undervalued";
                     else if (per > base.histPe && per/base.growth > 1.5) status = "Overvalued";
-                    return { sector: sec, price, _per: per, _pbv: pbv, dy, status, valuationRatio: valRatio };
+                    return { sector: sec, price, dy, status, valuationRatio: valRatio };
                 }).sort((a,b) => b.valuationRatio - a.valuationRatio);
             }, [sectorPerformance]);
 
@@ -2576,7 +2576,7 @@
                             {activeTab === "Screener" && (
                                 <React.Fragment>
                                     {activeScreenerTab === "InflowOutflow" && <ScreenerView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
-                                    {activeScreenerTab === "DragonFlow" && <DragonFlowView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
+                                    {activeScreenerTab === "DragonFlow" && <PriceFlowView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
                                     {activeScreenerTab === "BrokerSummary" && <BrokerSummaryView stocks={displayStocks} watchlist={watchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
                                     {activeScreenerTab === "BidOffer" && <OrderbookView stocks={displayStocks} activeTicker={activeTicker} />}
                                 </React.Fragment>
