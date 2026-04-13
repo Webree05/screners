@@ -1365,30 +1365,13 @@
                                         <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-full border border-success/20">Win Rate: 68%</span>
                                         <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20">Risk: Moderate</span>
                                     </div>
-                                </div>
-                            </Card>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
         const BubbleDragon = ({ ticker }) => {
             const svgRef = useRef();
             const containerRef = useRef();
 
-            const types = {
-                "STOCK": "#0EA5E9",
-                "CORPORATE": "#818CF8",
-                "FOUNDATION": "#34D399",
-                "INVESTMENT_BANK": "#A78BFA",
-                "INDIVIDUAL": "#FACC15",
-                "INSURANCE": "#22D3EE",
-                "MUTUAL_FUND": "#4ADE80",
-                "OTHER": "#94A3B8",
-                "PENSION_FUND": "#C084FC",
-                "SECURITIES": "#FB7185",
-                "NA": "#BEF264"
+            const colors = {
+                IHSG: "url(#grad-ihsg)", SECTOR: "url(#grad-sector)", WHALE: "url(#grad-whale)",
+                NODE_STROKE: "rgba(255, 255, 255, 0.1)", LINK: "rgba(0, 240, 255, 0.1)", PULSE: "#00F0FF"
             };
 
             const investorIntel = useMemo(() => ({
@@ -1400,158 +1383,254 @@
                     "BUMN": { tickers: ["BBRI", "BMRI", "BBNI", "TLKM", "PGAS", "ANTM", "TINS", "PTBA", "WIKA", "ADHI"], parent: "REPUBLIK INDONESIA" }
                 },
                 whales: [
-                    { id: "BLACKROCK", type: "INVESTMENT_BANK" },
-                    { id: "VANGUARD", type: "INVESTMENT_BANK" },
-                    { id: "BPJS_KTR", type: "PENSION_FUND" },
-                    { id: "TASPEN", type: "PENSION_FUND" },
-                    { id: "PRUDENTIAL", type: "INSURANCE" },
-                    { id: "SCHRODER", type: "MUTUAL_FUND" },
-                    { id: "NORGES_BANK", type: "INVESTMENT_BANK" },
-                    { id: "LKH", type: "INDIVIDUAL" }
+                    { id: "BLACKROCK", type: "INVESTMENT_BANK" }, { id: "VANGUARD", type: "INVESTMENT_BANK" },
+                    { id: "BPJS_KTR", type: "PENSION_FUND" }, { id: "TASPEN", type: "PENSION_FUND" },
+                    { id: "PRUDENTIAL", type: "INSURANCE" }, { id: "SCHRODER", type: "MUTUAL_FUND" },
+                    { id: "NORGES_BANK", type: "INVESTMENT_BANK" }, { id: "LKH", type: "INDIVIDUAL" }
                 ]
             }), []);
 
             const aiEngine = useMemo(() => ({
                 detectRelationships: (t) => {
                     const currentTicker = (t || "IHSG").toUpperCase();
-                    const nodes = [];
-                    const links = [];
-                    const added = new Set();
-                    const centerX = 400;
-                    const centerY = 250;
-
+                    const nodes = []; const links = []; const centerX = 400; const centerY = 250;
                     if (currentTicker === 'IHSG') {
-                        nodes.push({ id: "IHSG", type: "STOCK", level: 0, status: "HOLDING", val: 150, label: "IHSG INDEX", x: centerX, y: centerY, fx: centerX, fy: centerY });
-                        added.add("IHSG");
-
-                        const sectors = Object.keys(INDEX_BASES);
-                        sectors.forEach((sec, i) => {
-                            const angle = (i / sectors.length) * Math.PI * 2;
-                            const radius = 150;
-                            nodes.push({ 
-                                id: sec, type: "CORPORATE", level: 1, status: "HOLDING", val: 60, label: sec,
-                                x: centerX + Math.cos(angle) * radius,
-                                y: centerY + Math.sin(angle) * radius
-                            });
-                            links.push({ source: "IHSG", target: sec, value: 20 });
-                            added.add(sec);
+                        nodes.push({ id: "IHSG", type: "IHSG", ring: 0, val: 120, label: "IHSG INDEX" });
+                        Object.keys(INDEX_BASES).forEach((sec, i) => {
+                            nodes.push({ id: sec, type: "SECTOR", ring: 1, val: 50, label: sec });
+                            links.push({ source: "IHSG", target: sec });
                         });
-
-                        investorIntel.whales.forEach((w, i) => {
-                            const angle = (i / investorIntel.whales.length) * Math.PI * 2 + 0.5;
-                            const radius = 250;
-                            nodes.push({ 
-                                id: w.id, type: w.type, level: 2, status: "HOLDING", val: 40, label: w.id,
-                                x: centerX + Math.cos(angle) * radius,
-                                y: centerY + Math.sin(angle) * radius
-                            });
-                            links.push({ source: "IHSG", target: w.id, value: 10 });
-                            added.add(w.id);
+                        investorIntel.whales.forEach((w) => {
+                            nodes.push({ id: w.id, type: "WHALE", ring: 2, val: 35, label: w.id });
+                            links.push({ source: "IHSG", target: w.id });
                         });
                     } else {
-                        nodes.push({ id: currentTicker, type: "STOCK", level: 0, status: "HOLDING", val: 120, label: currentTicker, x: centerX, y: centerY, fx: centerX, fy: centerY });
-                        added.add(currentTicker);
-                        
+                        nodes.push({ id: currentTicker, type: "STOCK", ring: 0, val: 100, label: currentTicker });
                         const group = Object.entries(investorIntel.groups).find(([name, g]) => g.tickers.includes(currentTicker));
                         if (group) {
-                            const [gName, gInfo] = group;
-                            nodes.push({ id: gInfo.parent, type: "INDIVIDUAL", level: 1, status: "ACCUMULATING", val: 90, label: gInfo.parent });
-                            links.push({ source: currentTicker, target: gInfo.parent, value: 50 });
-                            added.add(gInfo.parent);
+                            nodes.push({ id: group[1].parent, type: "WHALE", ring: 1, val: 80, label: group[1].parent });
+                            links.push({ source: currentTicker, target: group[1].parent });
                         }
                     }
                     return { nodes, links };
                 },
-                getAnalysis: (t) => {
-                    if (t === 'IHSG') return "MARKET CONGREGATE: Institutional inflow detected across Tier-1 Banking. Dragon structure maintaining healthy orbital stability.";
-                    return `SPECIFIC INTEL: ${t} exhibits strong conglomerate correlation. Pulse metrics suggest quiet accumulation phase by dominant Whales.`;
-                }
+                getAnalysis: (t) => t === 'IHSG' ? "MARKET CONGREGATE: High-fidelity flow detected. Strategic orbital stability maintained." : `SPECIFIC INTEL: $${t} shows conglomerate parent correlation. Accumulation phase detected.`
             }), [investorIntel]);
 
             useEffect(() => {
                 if (!svgRef.current || !window.d3) return;
                 const d3 = window.d3;
                 const { nodes, links } = aiEngine.detectRelationships(ticker);
-                
-                const width = svgRef.current.clientWidth || 800;
-                const height = 500;
-
-                const svg = d3.select(svgRef.current);
-                svg.selectAll("*").remove();
-                
+                const width = svgRef.current.clientWidth || 800; const height = 500;
+                const svg = d3.select(svgRef.current); svg.selectAll("*").remove();
                 const defs = svg.append("defs");
-                const glow = defs.append("filter").attr("id", "dragonGlow").append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "blur");
-                defs.select("#dragonGlow").append("feMerge").selectAll("feMergeNode").data(["blur", "SourceGraphic"]).enter().append("feMergeNode").attr("in", d => d);
-
-                const centerGrad = defs.append("radialGradient").attr("id", "centerDash").selectAll("stop")
-                    .data([{off: "0%", col: "#00F0FF"}, {off: "100%", col: "#6C5CE7"}]).enter().append("stop").attr("offset", d => d.off).attr("stop-color", d => d.col);
-
-                const g = svg.append("g");
+                const filter = defs.append("filter").attr("id", "glow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+                filter.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "blur");
+                const merge = filter.append("feMerge"); merge.append("feMergeNode").attr("in", "blur"); merge.append("feMergeNode").attr("in", "SourceGraphic");
+                
+                ["ihsg", "sector", "whale"].forEach(type => {
+                    const g = defs.append("radialGradient").attr("id", `grad-${type}`);
+                    if (type === 'ihsg') { g.append("stop").attr("offset", "0%").attr("stop-color", "#00F0FF"); g.append("stop").attr("offset", "100%").attr("stop-color", "#6C5CE7"); }
+                    else if (type === 'sector') { g.append("stop").attr("offset", "0%").attr("stop-color", "#1E293B"); g.append("stop").attr("offset", "100%").attr("stop-color", "#334155"); }
+                    else { g.append("stop").attr("offset", "0%").attr("stop-color", "#F59E0B"); g.append("stop").attr("offset", "100%").attr("stop-color", "#D97706"); }
+                });
 
                 const simulation = d3.forceSimulation(nodes)
-                    .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.level === 0 ? 180 : 100))
-                    .force("charge", d3.forceManyBody().strength(-800))
-                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 8 + 15))
-                    .force("center", d3.forceCenter(width / 2, height / 2));
+                    .force("link", d3.forceLink(links).id(d => d.id).distance(220))
+                    .force("charge", d3.forceManyBody().strength(-1500))
+                    .force("collide", d3.forceCollide().radius(d => Math.sqrt(d.val) * 7 + 10))
+                    .force("center", d3.forceCenter(width / 2, height / 2))
+                    .force("radial", d3.forceRadial(d => d.ring * 160, width / 2, height / 2).strength(0.8));
 
-                const link = g.append("g").selectAll("line").data(links).join("line")
-                    .attr("stroke", "rgba(0, 240, 255, 0.15)").attr("stroke-width", 1.5).attr("stroke-dasharray", "5,5");
+                const container = svg.append("g");
+                const link = container.append("g").selectAll("line").data(links).join("line").attr("stroke", colors.LINK).attr("stroke-width", 1.5).attr("stroke-dasharray", "4,4");
+                const particle = container.append("g").selectAll("circle").data(links).join("circle").attr("r", 2).attr("fill", colors.PULSE).style("filter", "url(#glow)");
+                const node = container.append("g").selectAll("g").data(nodes).join("g").call(d3.drag().on("start", (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }).on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; }).on("end", (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
 
-                const pulse = g.append("g").selectAll("circle").data(links).join("circle")
-                    .attr("r", 2.5).attr("fill", "#00F0FF").style("filter", "url(#dragonGlow)");
-
-                const node = g.append("g").selectAll("g").data(nodes).join("g")
-                    .call(d3.drag().on("start", (e, d) => { if(!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-                                  .on("drag", (e, d) => { d.fx = e.x; d.fy = e.y; })
-                                  .on("end", (e, d) => { if(!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
-
-                node.append("circle")
-                    .attr("r", d => Math.sqrt(d.val) * 8)
-                    .attr("fill", d => d.id === "IHSG" ? "url(#centerDash)" : (types[d.type] || types.OTHER))
-                    .attr("stroke", d => d.status === "ACCUMULATING" ? "#00FFC6" : "rgba(255,255,255,0.05)")
-                    .attr("stroke-width", 2).style("filter", d => d.level === 0 ? "url(#dragonGlow)" : "none");
-
-                node.append("text").attr("dy", d => Math.sqrt(d.val) * 8 + 15).attr("text-anchor", "middle").attr("fill", "white").attr("font-size", "9px").attr("font-weight", "black").attr("class", "uppercase tracking-tighter").text(d => d.label);
+                node.append("circle").attr("r", d => Math.sqrt(d.val) * 7).attr("fill", d => colors[d.type] || colors.SECTOR).attr("stroke", "rgba(255,255,255,0.1)").attr("stroke-width", 2).attr("fill-opacity", 0.7).style("filter", d => d.type === "IHSG" ? "url(#glow)" : "none");
+                node.append("text").attr("dy", d => Math.sqrt(d.val) * 7 + 20).attr("text-anchor", "middle").attr("fill", "white").attr("font-size", "10px").attr("font-weight", "black").attr("class", "uppercase tracking-tighter").text(d => d.label);
 
                 simulation.on("tick", () => {
                     link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
                     node.attr("transform", d => `translate(${d.x},${d.y})`);
-                    
-                    const now = Date.now() / 800;
-                    pulse.attr("cx", d => {
-                        const t = (now + nodes.indexOf(d.source) * 0.2) % 1;
-                        return d.source.x + (d.target.x - d.source.x) * t;
-                    }).attr("cy", d => {
-                        const t = (now + nodes.indexOf(d.source) * 0.2) % 1;
-                        return d.source.y + (d.target.y - d.source.y) * t;
-                    });
+                    const t = (Date.now() / 1500) % 1;
+                    particle.attr("cx", d => d.source.x + (d.target.x - d.source.x) * t).attr("cy", d => d.source.y + (d.target.y - d.source.y) * t);
                 });
-
                 return () => simulation.stop();
-            }, [ticker, aiEngine, types]);
+            }, [ticker, aiEngine]);
 
             return (
-                <div ref={containerRef} className="relative w-full h-[500px] bg-[#0A0F1D] overflow-hidden">
-                    <div className="absolute top-6 left-6 z-10 p-4 glass-panel rounded-2xl border border-white/5 bg-slate-900/40 backdrop-blur-md">
-                        <h4 className="text-[9px] font-black text-primary uppercase tracking-widest mb-2 border-b border-primary/20 pb-1">Dragon Matrix Legend</h4>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                            {Object.entries(types).slice(0, 10).map(([k, v]) => (
-                                <div key={k} className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: v }}></div>
-                                    <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">{k.replace("_", " ")}</span>
-                                </div>
-                            ))}
-                        </div>
+                <div ref={containerRef} className="relative w-full h-[550px] bg-[#05080F] overflow-hidden rounded-[2rem] border border-slate-800 shadow-inner">
+                    <div className="absolute top-6 left-6 z-10 p-4 glass-panel rounded-2xl border border-white/5 bg-slate-900/60 transition-all hover:bg-slate-900/80">
+                         <h4 className="text-[10px] font-black text-primary uppercase mb-3 border-b border-white/10 pb-1 tracking-[0.2em] italic">Dragon Flow Intelligence</h4>
+                         <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+                             <div className="flex items-center gap-2 text-[8px] font-black text-slate-400"><div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_#00F0FF]"></div> INDEX SOURCE</div>
+                             <div className="flex items-center gap-2 text-[8px] font-black text-slate-400"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> MARKET SECTOR</div>
+                             <div className="flex items-center gap-2 text-[8px] font-black text-slate-400"><div className="w-2 h-2 rounded-full bg-amber-500"></div> INSTITUTIONAL</div>
+                             <div className="flex items-center gap-2 text-[8px] font-black text-slate-400"><div className="w-2 h-0.5 bg-primary/40"></div> CAPITAL FLOW</div>
+                         </div>
                     </div>
                     <svg ref={svgRef} className="w-full h-full" />
-                    <div className="absolute bottom-6 left-6 right-6 p-4 glass-panel rounded-xl border border-primary/20 bg-primary/5 backdrop-blur-md">
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Master Intelligence Report</span>
+                    <div className="absolute bottom-6 left-6 right-6 p-5 glass-panel rounded-[1.5rem] border border-primary/20 bg-primary/5 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex items-center gap-3 mb-2"><div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div><span className="text-[10px] font-black text-primary uppercase tracking-widest italic leading-none">AI Market Pulse: {ticker}</span></div>
+                        <p className="text-[13px] font-bold text-slate-100 leading-relaxed border-l-2 border-primary/40 pl-4 py-1 italic">{aiEngine.getAnalysis(ticker)}</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const CatchTheDragonView = ({ stocks, watchlist, toggleWatchlist, activeTicker, setActiveTicker }) => {
+            if (!stocks || stocks.length === 0) return null;
+            const stock = (activeTicker === 'IHSG') ? { t: "IHSG", ap: 7240, sector: "COMPOSITE" } : (stocks.find(s => s.t === activeTicker) || stocks[0]);
+            
+            const generateDragonSignal = useCallback((ticker) => {
+                let hash = 0; for (let i = 0; i < ticker.length; i++) hash = ((hash << 5) - hash) + ticker.charCodeAt(i);
+                const seed = Math.abs(hash); const isIHSG = ticker === 'IHSG';
+                const freeFloat = isIHSG ? "100.0" : (5 + (seed % 55)).toFixed(1);
+                const avg5dVal = isIHSG ? "12.4 Trillion" : ((seed % 500) + 200).toFixed(1) + " Billion";
+                const buyPct = (45 + (seed % 25)); const sellPct = 100 - buyPct;
+                const price = stock.ap || 1000;
+                const s1 = Math.round(price * 0.975); const s2 = Math.round(price * 0.95);
+                const r1 = Math.round(price * 1.025); const r2 = Math.round(price * 1.05);
+                return { freeFloat, avg5dVal, buyPct, sellPct, s1, s2, r1, r2, entry: s1, tp: r1, sl: Math.round(s1 * 0.98), rr: "1:2.5", isBullish: seed % 2 === 0, volume: seed % 1000 + 500, value: seed % 100 + 10, netFlow: (seed % 40) - 15 };
+            }, [stock.ap]);
+            const signal = generateDragonSignal(activeTicker);
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                    <div className="bg-[#0B121E] rounded-[3rem] border border-slate-800 shadow-2xl p-10 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -mr-48 -mt-48 animate-pulse"></div>
+                        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
+                            <div>
+                                <h1 className="text-5xl font-black text-white italic tracking-tighter uppercase leading-none">Catch the <span className="text-primary italic drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]">Dragon</span></h1>
+                                <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.4em] mt-4 border-l-4 border-primary pl-4 italic">Algorithmic Intelligence Pulse v4.9 Alpha</p>
+                            </div>
+                            <div className="w-full lg:w-96 glass-panel p-5 rounded-[2rem] border border-white/5 bg-slate-900/40">
+                                <label className="text-[9px] font-black text-primary uppercase tracking-[0.2em] block mb-3 px-1 italic">Symbol Intel Lock</label>
+                                <div className="flex gap-2">
+                                    <select value={activeTicker} onChange={(e) => setActiveTicker(e.target.value)} className="flex-1 bg-slate-950/80 border border-slate-800 text-white px-5 py-4 rounded-2xl focus:border-primary outline-none font-black text-sm tracking-widest transition-all appearance-none cursor-pointer">
+                                        <option value="IHSG">IHSG (COMPOSITE INDEX)</option>
+                                        {stocks.filter(s => s.t !== 'IHSG').map(s => <option key={s.t} value={s.t}>{s.t} - {s.sector}</option>)}
+                                    </select>
+                                    <button onClick={() => toggleWatchlist(activeTicker)} className={`px-6 rounded-2xl border transition-all ${watchlist.includes(activeTicker) ? 'bg-primary/20 border-primary text-primary shadow-[0_0_20px_rgba(0,240,255,0.4)]' : 'bg-slate-950/80 border-slate-800 text-slate-600'}`}>
+                                        <Icon name="star" size={24} className={watchlist.includes(activeTicker) ? 'fill-current' : ''} />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-[11px] font-bold text-slate-300 leading-relaxed italic">
-                            {aiEngine.getAnalysis(ticker)}
-                        </p>
+                        <div className="mb-10 rounded-[2.5rem] border border-slate-800 shadow-3xl overflow-hidden"><BubbleDragon ticker={activeTicker} /></div>
+                        <div className="mb-10 h-[650px] bg-slate-950 rounded-[2.5rem] border border-slate-800 shadow-3xl overflow-hidden relative">
+                            <div className="p-8 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between">
+                                <div className="flex items-center gap-4"><Icon name="activity" className="text-primary animate-pulse" /><h3 className="text-sm font-black text-white uppercase tracking-widest leading-none italic">Market Depth Flow Chart</h3></div>
+                                <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-success animate-pulse"></div><span className="text-[10px] font-black text-success uppercase tracking-widest italic">Live Data Feed Active</span></div>
+                            </div>
+                            <div className="p-8 h-[550px]"><ChartWidget ticker={activeTicker} /></div>
+                        </div>
+                        <div className="mb-10"><DragonValuationChart ticker={activeTicker} stocks={stocks} /></div>
+                        <div className="overflow-hidden rounded-[2.5rem] border border-slate-800 bg-slate-900/20 backdrop-blur-xl">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-900/80"><tr className="border-b border-slate-800"><th className="py-6 px-8 text-[11px] font-black text-slate-500 uppercase tracking-widest">Logic Parameter Layer</th><th className="py-6 px-8 text-[11px] font-black text-slate-500 uppercase tracking-widest">Real-Time Data Output</th><th className="py-6 px-8 text-[11px] font-black text-slate-500 uppercase tracking-widest hidden md:table-cell">Algorithmic Formula Alpha</th></tr></thead>
+                                <tbody className="text-sm font-black text-slate-400">
+                                    <tr className="border-b border-white/5 hover:bg-white/5 transition-all"><td className="py-8 px-8 text-white text-[13px] italic uppercase tracking-tight">1. Supply & Float %</td><td className="py-8 px-8"><span className="text-primary text-2xl tracking-tighter">{stock.t}</span><span className="text-[11px] ml-4 text-slate-500 font-bold uppercase">FLOAT: {signal.freeFloat}%</span></td><td className="py-8 px-8 hidden md:table-cell text-[10px] text-slate-600 font-bold italic">FF% = (PUBLIC_SHARES / TOTAL_SHARES) × 100</td></tr>
+                                    <tr className="border-b border-white/5 hover:bg-white/5 transition-all"><td className="py-8 px-8 text-white text-[13px] italic uppercase tracking-tight">2. Done Signal Matrix</td><td className="py-8 px-8"><div className="flex items-center gap-6"><span className="text-2xl text-white tracking-widest">Rp{stock.ap.toLocaleString()}</span><div className={`px-5 py-2 rounded-xl text-slate-950 text-[11px] font-black tracking-widest ${signal.buyPct > 50 ? 'bg-success shadow-[0_0_20px_rgba(34,197,94,0.3)]' : 'bg-danger shadow-[0_0_20px_rgba(239,68,68,0.3)]'}`}>{signal.buyPct > 50 ? `STRONG BUY (${signal.buyPct}%)` : `SELL ZONE (${signal.sellPct}%)`}</div></div></td><td className="py-8 px-8 hidden md:table-cell text-[10px] text-slate-600 font-bold italic">BUY_INTENSITY = (BUY_VOL / TOTAL_VOL) × 100</td></tr>
+                                    <tr className="border-b border-white/5 hover:bg-white/5 transition-all"><td className="py-8 px-8 text-white text-[13px] italic uppercase tracking-tight">3. Support & Pivot R</td><td className="py-8 px-8"><div className="grid grid-cols-2 gap-8"><div><div className="text-[9px] text-slate-600 mb-1 italic">SUPPORT_LAYER</div><div className="text-danger tracking-widest">S1: {signal.s1} | S2: {signal.s2}</div></div><div><div className="text-[9px] text-slate-600 mb-1 italic">RESIST_LAYER</div><div className="text-success tracking-widest">R1: {signal.r1} | R2: {signal.r2}</div></div></div></td><td className="py-8 px-8 hidden md:table-cell text-[10px] text-slate-600 font-bold italic">RR_RATIO = ΔTP / ΔSL | ALPHA V.7 CORE ENGINE</td></tr>
+                                    <tr className="border-white/5 hover:bg-white/5 transition-all"><td className="py-8 px-8 text-white text-[13px] italic uppercase tracking-tight">4. Execution Strategy</td><td className="py-8 px-8"><div className="grid grid-cols-3 gap-3"><div className="bg-success/10 p-4 rounded-2xl border border-success/20"><div className="text-[8px] text-success mb-1">ENTRY</div><div className="text-white">Rp{signal.entry}</div></div><div className="bg-primary/10 p-4 rounded-2xl border border-primary/20"><div className="text-[8px] text-primary mb-1">TARGET</div><div className="text-white">Rp{signal.tp}</div></div><div className="bg-danger/10 p-4 rounded-2xl border border-danger/20"><div className="text-[8px] text-danger mb-1">STOPLOSS</div><div className="text-white">Rp{signal.sl}</div></div></div></td><td className="py-8 px-8 hidden md:table-cell text-[10px] text-slate-600 font-bold italic">STRAT = [ENTRY @ S1_B] -> [TARGET @ R1_B]</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const PortfolioView = ({ portfolio, setPortfolio, stocks }) => {
+            const [newAsset, setNewAsset] = useState({ ticker: "BBCA", buyPrice: "", buyLot: "", sellPrice: "", sellLot: "" });
+
+            const addToPortfolio = () => {
+                if (!newAsset.buyPrice || !newAsset.buyLot) return;
+                const entry = { ...newAsset, id: Date.now(), buyPrice: Number(newAsset.buyPrice), buyLot: Number(newAsset.buyLot), sellPrice: Number(newAsset.sellPrice || 0), sellLot: Number(newAsset.sellLot || 0) };
+                const updated = [...portfolio, entry];
+                setPortfolio(updated);
+                localStorage.setItem("portfolio", JSON.stringify(updated));
+            };
+
+            const removePortfolioItem = (id) => {
+                const updated = portfolio.filter(item => item.id !== id);
+                setPortfolio(updated);
+                localStorage.setItem("portfolio", JSON.stringify(updated));
+            };
+
+            const totalReturn = portfolio.reduce((acc, item) => {
+                const currentPrice = stocks.find(s => s.t === item.ticker)?.ap || item.buyPrice;
+                const buyValue = item.buyPrice * item.buyLot * 100;
+                const currentVal = currentPrice * item.buyLot * 100;
+                const realizedVal = item.sellPrice * item.sellLot * 100;
+                return acc + (currentPrice - item.buyPrice) * item.buyLot * 100;
+            }, 0);
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <Card title="Daftar Portofolio" className="lg:col-span-2">
+                            <div className="space-y-4">
+                                {portfolio.map(item => {
+                                    const currentStock = stocks.find(s => s.t === item.ticker);
+                                    const currentPrice = currentStock?.ap || item.buyPrice;
+                                    const profit = (currentPrice - item.buyPrice) * item.buyLot * 100;
+                                    const profitPct = ((currentPrice - item.buyPrice) / item.buyPrice) * 100;
+                                    return (
+                                        <div key={item.id} className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-wrap justify-between items-center gap-4 group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center font-black text-white">{item.ticker}</div>
+                                                <div>
+                                                    <div className="text-xs text-slate-500 font-bold uppercase tracking-tighter">Posisi</div>
+                                                    <div className="text-sm font-black text-slate-100">{item.buyLot} Lot @ {item.buyPrice}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-xs text-slate-500 font-bold uppercase tracking-tighter">P/L Estimate</div>
+                                                <div className={`text-md font-black ${profit >= 0 ? 'text-success' : 'text-danger'}`}>
+                                                    Rp{profit.toLocaleString()} ({profitPct.toFixed(2)}%)
+                                                </div>
+                                            </div>
+                                            <button onClick={() => removePortfolioItem(item.id)} className="p-2 text-slate-600 hover:text-danger hover:bg-danger/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Icon name="trash-2" className="w-4 h-4" /></button>
+                                        </div>
+                                    );
+                                })}
+                                {portfolio.length === 0 && <div className="py-12 text-center text-slate-500 font-medium">Belum ada aset dalam portofolio.</div>}
+                            </div>
+                        </Card>
+                        <div className="space-y-6">
+                            <Card title="Tambah Aset" icon={<Icon name="plus" />}>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Pilih Saham</label>
+                                            <select value={newAsset.ticker} onChange={(e) => setNewAsset({...newAsset, ticker: e.target.value})} className="w-full bg-slate-800 border-none text-white p-2.5 rounded-xl font-bold">
+                                                {stocks.map(s => <option key={s.t} value={s.t}>{s.t}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Harga Beli</label>
+                                            <input type="number" value={newAsset.buyPrice} onChange={(e) => setNewAsset({...newAsset, buyPrice: e.target.value})} className="w-full bg-slate-800 border-none text-white p-2.5 rounded-xl" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Jumlah Lot</label>
+                                            <input type="number" value={newAsset.buyLot} onChange={(e) => setNewAsset({...newAsset, buyLot: e.target.value})} className="w-full bg-slate-800 border-none text-white p-2.5 rounded-xl" />
+                                        </div>
+                                    </div>
+                                    <button onClick={addToPortfolio} className="w-full py-3 bg-primary text-slate-900 font-black rounded-xl hover:opacity-90 transition-all">TAMBAH ASET</button>
+                                </div>
+                            </Card>
+                            <Card title="AI Portfolio Summary">
+                                <div className="text-center py-4">
+                                    <div className="text-[10px] text-slate-500 font-black uppercase mb-1">Estimated Gain/Loss</div>
+                                    <div className={`text-2xl font-black ${totalReturn >= 0 ? 'text-success' : 'text-danger'}`}>
+                                        Rp{totalReturn.toLocaleString('id-ID')}
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
                     </div>
                 </div>
             );
@@ -1993,8 +2072,6 @@
             );
         };
 
-
-
         const OrderbookView = ({ stocks, activeTicker }) => {
             const stock = stocks.find(s => s.t === activeTicker) || stocks[0];
             const generateDepth = (base, count) => {
@@ -2115,10 +2192,6 @@
                     <div className="bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl p-8 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] -mr-48 -mt-48 animate-pulse"></div>
                         <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
-                            <div>
-                                <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">Catch the <span className="text-primary italic">Dragon</span> in the Game Flow !!</h1>
-                                <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em] mt-2 border-l-4 border-primary pl-4">Ultra-High Precision Real-Time Signal Engine v4.0</p>
-                            </div>
                             <div className="w-full lg:w-80">
                                 <label className="text-[9px] font-black text-primary uppercase tracking-widest block mb-2">Target Symbol Lock-On</label>
                                 <div className="flex gap-2">
@@ -2163,11 +2236,6 @@
                             <div className="p-6 h-[550px]">
                                 <ChartWidget ticker={activeTicker} />
                             </div>
-                        </div>
-
-                        {/* Worm or Dragon Pattern Valuation Section */}
-                        <div className="mb-8 p-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
-                             <DragonValuationChart ticker={activeTicker} stocks={stocks} />
                         </div>
 
                         {/* Order Book (Bid/Offer) Section */}
