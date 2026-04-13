@@ -525,6 +525,7 @@
             "JASA-KONSUMEN": { basePrice: 900, eps: 50, bookValue: 600, dividend: 25, growth: 10, histPe: 18, histPbv: 1.5, histDy: 2.7 },
             "SYARIAH": { basePrice: 2400, eps: 150, bookValue: 1200, dividend: 60, growth: 8, histPe: 16, histPbv: 2.0, histDy: 2.5 },
             "DAY-TRADE": { basePrice: 500, eps: 10, bookValue: 200, dividend: 0, growth: 25, histPe: 50, histPbv: 4.5, histDy: 0.0 },
+            "COMPOSITE": { basePrice: 7200, eps: 450, bookValue: 3500, dividend: 180, growth: 6, histPe: 15, histPbv: 1.8, histDy: 3.2 },
         };
 
         const LoginPage = ({ onLogin, loginError }) => {
@@ -1469,46 +1470,46 @@
                     const added = new Set();
 
                     if (ticker === 'IHSG') {
-                        // ULTRA-DENSE IHSG COMPOSITE INTELLIGENCE MATRIX
-                        nodes.push({ id: "IHSG", type: "STOCK", level: 0, status: "HOLDING", val: 120, label: "IHSG INDEX" });
+                        // REVERT TO CLEAN & PROFESSIONAL TOP-LEVEL MATRIX
+                        // Restoring original structure: IHSG core with Sector & Institutional satellites
+                        nodes.push({ id: "IHSG", type: "STOCK", level: 0, status: "HOLDING", val: 120, label: "IHSG INDEX", fx: null, fy: null });
                         added.add("IHSG");
 
                         const allSectors = Object.keys(SECTOR_MAPPING);
+                        
+                        // 1. Map all Sectors as primary satellites (Clean & No Duplicates)
                         allSectors.forEach((sec, idx) => {
-                            const isBullish = (idx % 3 !== 0); 
-                            const status = isBullish ? "ACCUMULATING" : "DISTRIBUTING";
-                            const weight = (10 + (idx * 5)) % 60 + 20;
-                            
-                            nodes.push({ id: sec, type: "CORPORATE", level: 1, status, val: weight, label: sec });
-                            links.push({ source: sec, target: "IHSG", value: (Math.random() * 10 + 5).toFixed(1) });
+                            const status = (idx % 2 === 0) ? "ACCUMULATING" : "HOLDING";
+                            nodes.push({ id: sec, type: "CORPORATE", level: 1, status, val: 55, label: sec, fx: null, fy: null });
+                            links.push({ source: sec, target: "IHSG", value: (10 + (idx * 1.5)).toFixed(1) });
                             added.add(sec);
-
-                            // Connect unique Whales/Bandars to each sector for IHSG view using deterministic hashing
-                            const whalePool = investorIntel.whales;
-                            const secCode = sec.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                            
-                            [0, 1, 2].forEach(offset => {
-                                const whale = whalePool[(secCode + (offset * 3)) % whalePool.length];
-                                const uniqueWhaleId = `${sec}_${whale.id}`;
-                                if (!added.has(uniqueWhaleId)) {
-                                    nodes.push({ ...whale, id: uniqueWhaleId, level: 2, status: isBullish ? "ACCUMULATING" : "HOLDING", val: 25, label: whale.id });
-                                    links.push({ source: uniqueWhaleId, target: sec, value: (Math.random() * 40 + 20).toFixed(1) });
-                                    added.add(uniqueWhaleId);
-                                }
-                            });
                         });
+
+                        // 2. Map Key Institutional Whales (Shared Nodes managed via unique added Set)
+                        investorIntel.whales.forEach((whale, idx) => {
+                            const status = (idx % 3 === 0) ? "ACCUMULATING" : "HOLDING";
+                            // Resettng fx/fy ensures nodes aren't locked from previous ticker states
+                            nodes.push({ ...whale, level: 1, status, val: 45, label: whale.id, fx: null, fy: null });
+                            links.push({ source: whale.id, target: "IHSG", value: (12 - idx/2).toFixed(1) });
+                            added.add(whale.id);
+
+                            // Add strategic intelligence links between movers and sectors
+                            const targetSec = allSectors[(idx * 2) % allSectors.length];
+                            links.push({ source: whale.id, target: targetSec, value: (5 + idx).toFixed(1), type: "indirect" });
+                        });
+
                         return { nodes, links: edgesToLinks(links, nodes) };
                     }
 
                     // STANDARD EMITEN INTELLIGENCE TARGETING
-                    nodes.push({ id: ticker, type: "STOCK", level: 0, status: "NEUTRAL", val: 60, label: ticker });
+                    nodes.push({ id: ticker, type: "STOCK", level: 0, status: "NEUTRAL", val: 60, label: ticker, fx: null, fy: null });
                     added.add(ticker);
 
                     const group = Object.values(investorIntel.groups).find(g => g.tickers.includes(ticker));
                     
                     if (group) {
                         if (!added.has(group.parent)) {
-                            nodes.push({ id: group.parent, type: "INDIVIDUAL", level: 1, status: "ACCUMULATING", val: 45, label: group.parent });
+                            nodes.push({ id: group.parent, type: "INDIVIDUAL", level: 1, status: "ACCUMULATING", val: 45, label: group.parent, fx: null, fy: null });
                             links.push({ source: group.parent, target: ticker, value: 51.4 });
                             added.add(group.parent);
                         }
@@ -1516,7 +1517,7 @@
                         group.entities.forEach((ent, i) => {
                             if (!added.has(ent.id)) {
                                 const status = i % 2 === 0 ? "HOLDING" : "ACCUMULATING";
-                                nodes.push({ ...ent, level: 2, status, val: 35, label: ent.id });
+                                nodes.push({ ...ent, level: 2, status, val: 35, label: ent.id, fx: null, fy: null });
                                 links.push({ source: ent.id, target: ticker, value: (15 + i * 2.5).toFixed(1) });
                                 added.add(ent.id);
                                 links.push({ source: group.parent, target: ent.id, value: 99.9, type: "indirect" });
@@ -1525,14 +1526,14 @@
 
                         group.tickers.slice(0, 3).forEach(other => {
                             if (other !== ticker && !added.has(other)) {
-                                nodes.push({ id: other, type: "STOCK", level: 2, status: "NEUTRAL", val: 20, label: other, isGhost: true });
+                                nodes.push({ id: other, type: "STOCK", level: 2, status: "NEUTRAL", val: 20, label: other, isGhost: true, fx: null, fy: null });
                                 links.push({ source: group.parent, target: other, value: 50.1, type: "indirect" });
                                 added.add(other);
                             }
                         });
                     } else {
                         const shadowController = `PT ${ticker} GLOBAL INVESTAMA`;
-                        nodes.push({ id: shadowController, type: "CORPORATE", level: 1, status: "ACCUMULATING", val: 42, label: shadowController });
+                        nodes.push({ id: shadowController, type: "CORPORATE", level: 1, status: "ACCUMULATING", val: 42, label: shadowController, fx: null, fy: null });
                         links.push({ source: shadowController, target: ticker, value: 65.2 });
                         added.add(shadowController);
                     }
@@ -1543,7 +1544,7 @@
                             if (!added.has(whale.id)) {
                                 const weight = ((hash % 40) / 10 + 0.1).toFixed(2);
                                 const status = weight > 2 ? "ACCUMULATING" : "DISTRIBUTING";
-                                nodes.push({ ...whale, level: 1, status, val: weight * 6 + 10, label: whale.id });
+                                nodes.push({ ...whale, level: 1, status, val: weight * 6 + 10, label: whale.id, fx: null, fy: null });
                                 links.push({ source: whale.id, target: ticker, value: weight });
                                 added.add(whale.id);
                             }
@@ -1629,30 +1630,44 @@
                             }));
 
                     const statusColors = {
-                        "ACCUMULATING": "#10B981",
-                        "DISTRIBUTING": "#EF4444",
+                        "ACCUMULATING": "#00FFC6", // Vibrant Neon Cyan-Green
+                        "DISTRIBUTING": "#FF385C", // Vibrant Neon Rose
                         "HOLDING": "#3B82F6",
                         "NEUTRAL": "#94A3B8"
                     };
 
+                    const defs = svg.append("defs");
+                    
+                    // Premium Glow Filter
+                    const filter = defs.append("filter").attr("id", "glow");
+                    filter.append("feGaussianBlur").attr("stdDeviation", "3.5").attr("result", "coloredBlur");
+                    const feMerge = filter.append("feMerge");
+                    feMerge.append("feMergeNode").attr("in", "coloredBlur");
+                    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+                    // Center Node Gradient
+                    const centerGrad = defs.append("radialGradient").attr("id", "centerGrad");
+                    centerGrad.append("stop").attr("offset", "0%").attr("stop-color", "#00F0FF");
+                    centerGrad.append("stop").attr("offset", "100%").attr("stop-color", "#6C5CE7");
+
                     node.append("circle")
                         .attr("r", d => Math.sqrt(d.val) * 7 + 5)
-                        .attr("fill", d => types[d.type] || types.OTHER)
+                        .attr("fill", d => d.level === 0 ? "url(#centerGrad)" : (types[d.type] || types.OTHER))
                         .attr("stroke", d => d.status ? statusColors[d.status] : "#0F172A")
-                        .attr("stroke-width", d => d.level === 0 ? 4 : 2)
-                        .style("filter", "drop-shadow(0 0 5px rgba(0,0,0,0.5))");
+                        .attr("stroke-width", d => d.level === 0 ? 5 : 2)
+                        .style("filter", d => d.status ? `drop-shadow(0 0 8px ${statusColors[d.status]}66)` : "none");
 
-                    // Dynamic Pulse effect (Classic radius pulse)
-                    node.filter(d => d.status === "ACCUMULATING").append("circle")
+                    // Dual-Mode Pulse Effect (Accumulation/Distribution)
+                    node.filter(d => d.status === "ACCUMULATING" || d.status === "DISTRIBUTING").append("circle")
                         .attr("r", d => Math.sqrt(d.val) * 7 + 5)
                         .attr("fill", "transparent")
-                        .attr("stroke", statusColors.ACCUMULATING)
+                        .attr("stroke", d => statusColors[d.status])
                         .attr("stroke-width", 2)
                         .attr("opacity", 0.6)
                         .append("animate")
                             .attr("attributeName", "r")
-                            .attr("values", (d) => `${Math.sqrt(d.val) * 7 + 5};${Math.sqrt(d.val) * 7 + 15}`)
-                            .attr("dur", "2s")
+                            .attr("values", (d) => `${Math.sqrt(d.val) * 7 + 5};${Math.sqrt(d.val) * 7 + 18}`)
+                            .attr("dur", d => d.status === "ACCUMULATING" ? "1.5s" : "2.5s")
                             .attr("repeatCount", "indefinite");
 
                     node.append("text")
@@ -2082,7 +2097,10 @@
         };
 
         const DragonValuationChart = ({ ticker, stocks }) => {
-            const stock = stocks.find(s => s.t === ticker) || (stocks && stocks[0]) || { sector: "FINANCE", ap: 1500 };
+            const stock = (ticker === 'IHSG') 
+                ? { t: "IHSG", sector: "COMPOSITE", ap: 7240 }
+                : (stocks.find(s => s.t === ticker) || (stocks && stocks[0]) || { sector: "FINANCE", ap: 1500 });
+                
             const sector = stock.sector || "FINANCE";
             const base = INDEX_BASES[sector] || INDEX_BASES["FINANCE"];
 
@@ -2257,15 +2275,18 @@
                     </div>
                 );
             }
-            const stock = stocks.find(s => s.t === activeTicker) || stocks[0];
+            const stock = (activeTicker === 'IHSG') 
+                ? { t: "IHSG", ap: 7240, sector: "COMPOSITE", pct: 0.45, v: 12500000000 }
+                : (stocks.find(s => s.t === activeTicker) || stocks[0]);
             
             const generateDragonSignal = useCallback((ticker) => {
                 let hash = 0;
                 for (let i = 0; i < ticker.length; i++) hash = ((hash << 5) - hash) + ticker.charCodeAt(i);
                 const seed = Math.abs(hash);
                 
-                const freeFloat = (5 + (seed % 55)).toFixed(1);
-                const avg5dVal = ((seed % 500) + 200).toFixed(1) + " Billion";
+                const isIHSG = ticker === 'IHSG';
+                const freeFloat = isIHSG ? "100.0" : (5 + (seed % 55)).toFixed(1);
+                const avg5dVal = isIHSG ? "12.4 Trillion" : ((seed % 500) + 200).toFixed(1) + " Billion";
                 const buyPct = (45 + (seed % 25));
                 const sellPct = 100 - buyPct;
                 
@@ -2280,12 +2301,12 @@
                 const sl = s1 - (price * 0.02);
                 const rr = ((tp - entry) / (entry - sl)).toFixed(2);
                 
-                const isBullish = (seed % 2 === 0);
-                const volume = (seed % 1000) + 500;
-                const value = (seed % 100) + 10;
-                const frequency = (seed % 5000) + 1000;
+                const isBullish = isIHSG ? true : (seed % 2 === 0);
+                const volume = isIHSG ? 120000000 : (seed % 1000) + 500;
+                const value = isIHSG ? 950 : (seed % 100) + 10;
+                const frequency = isIHSG ? 1250000 : (seed % 5000) + 1000;
                 
-                const netFlow = (seed % 40) - 15;
+                const netFlow = isIHSG ? 245.5 : (seed % 40) - 15;
                 
                 return { freeFloat, avg5dVal, buyPct, sellPct, s1, s2, r1, r2, entry, tp, sl, rr, isBullish, volume, value, frequency, netFlow };
             }, [stock]);
