@@ -440,8 +440,12 @@
                         for (let i = 0; i < timestamps.length; i++) {
                             if (quote.close[i] !== null) {
                                 let t = timestamps[i];
-                                if (timeframe !== '1D' && timeframe !== '1Mo') t += 7 * 3600;
-                                if (timeframe === '1D' || timeframe === '1Mo') {
+                                
+                                // FORCE QUANTIZATION: Align to timeframe buckets to prevent 'ngawur' gaps
+                                if (timeframe === '1S') t = Math.floor(t);
+                                else if (timeframe === '1M') t = Math.floor(t / 60) * 60;
+                                else if (timeframe === '1H') t = Math.floor(t / 3600) * 3600;
+                                else if (timeframe === '1D' || timeframe === '1Mo') {
                                     const d = new Date(t * 1000);
                                     t = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                 }
@@ -449,8 +453,7 @@
                             }
                         }
 
-                        // HIGH-SPEED SINK: Patch Yahoo data with real-time local server data
-                        // This eliminates the 15-minute delay from external APIs
+                        // HIGH-SPEED SINK: Precise Local Engine Alignment
                         const localTicker = ticker === 'IHSG' ? '^JKSE' : `${ticker}.JK`;
                         if (localData[localTicker]) {
                             const l = localData[localTicker];
@@ -460,7 +463,11 @@
                             for (let j = 0; j < lTimes.length; j++) {
                                 if (lPrices[j] === null) continue;
                                 let lt = lTimes[j];
-                                if (timeframe !== '1D' && timeframe !== '1Mo') lt += 7 * 3600;
+                                
+                                // Same quantization for local data
+                                if (timeframe === '1S') lt = Math.floor(lt);
+                                else if (timeframe === '1M') lt = Math.floor(lt / 60) * 60;
+                                else if (timeframe === '1H') lt = Math.floor(lt / 3600) * 3600;
                                 
                                 let timeKey = lt;
                                 if (timeframe === '1D' || timeframe === '1Mo') {
@@ -497,10 +504,30 @@
                             }
                         }
                         
-                        let sortedData = uniqueData.sort((a, b) => {
+                        const sortedData = uniqueData.sort((a, b) => {
                             if (typeof a.time === 'string') return a.time.localeCompare(b.time);
                             return a.time - b.time;
                         });
+
+                        // INTELLIGENT EMA CALCULATION (Period: 20)
+                        if (emaSeriesInstance && sortedData.length > 20) {
+                            const emaData = [];
+                            const period = 20;
+                            const k = 2 / (period + 1);
+                            let ema = sortedData[0].close;
+                            
+                            for (let i = 0; i < sortedData.length; i++) {
+                                ema = (sortedData[i].close * k) + (ema * (1 - k));
+                                if (i >= period) {
+                                    emaData.push({ time: sortedData[i].time, value: ema });
+                                }
+                            }
+                            emaSeriesInstance.setData(emaData);
+                        }
+
+                        if (chartInstance && sortedData.length > 0) {
+                            setTimeout(() => chartInstance.timeScale().fitContent(), 100);
+                        }
 
                         return sortedData;
                     } catch (e) { 
@@ -625,18 +652,15 @@
                 } else if (timeframe === '1M' || timeframe === '1H') {
                     const step = timeframe === '1M' ? 60 : 3600;
                     timeVal = Math.floor(nowSeconds / step) * step;
-                    timeVal += 7 * 3600; // Alignment with Indo Time
                 }
 
+                // QUANTIZATION RE-SYNC: Ensure the live bucket matches the timeline accurately
+                const bucketTime = (timeframe === '1D' || timeframe === '1Mo') ? timeVal : timeVal;
                 const last = lastCandleRef.current;
-                
-                // If the time bucket is the same, evolve the candle. If new bucket, start fresh.
-                const isNewBucket = !last || last.time !== timeKey(timeVal);
-                
-                function timeKey(t) { return typeof t === 'string' ? t : t; }
+                const isNewBucket = !last || last.time !== bucketTime;
 
                 const updatedCandle = isNewBucket 
-                    ? { time: timeVal, open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice }
+                    ? { time: bucketTime, open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice }
                     : { 
                         ...last, 
                         high: Math.max(last.high, currentPrice), 
@@ -646,13 +670,18 @@
 
                 try {
                     seriesInstance.update(updatedCandle);
-                    if (lineSeriesInstance) lineSeriesInstance.update({ time: timeVal, value: currentPrice });
+                    if (lineSeriesInstance) lineSeriesInstance.update({ time: bucketTime, value: currentPrice });
+                    
+                    // Auto-Scale on Big Moves
+                    if (isNewBucket && chartInstance) {
+                        // chartInstance.timeScale().fitContent(); // Enable only if user wants aggressive scrolling
+                    }
                     
                     lastCandleRef.current = updatedCandle;
                 } catch (e) {
-                    // Fail silently during re-init
+                    // Fail silently
                 }
-            }, [currentPrice, seriesInstance, timeframe, lineSeriesInstance]);
+            }, [currentPrice, seriesInstance, timeframe, lineSeriesInstance, chartInstance]);
 
             return (
                 <div className="flex flex-col h-full">
