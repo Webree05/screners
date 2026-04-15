@@ -336,13 +336,21 @@
             const [emaSeriesInstance, setEmaSeriesInstance] = useState(null);
 
             useEffect(() => {
-                if (!chartContainerRef.current) return;
+                if (!chartContainerRef.current || !window.createChart) {
+                    console.error("LightweightCharts not found or container missing");
+                    return;
+                }
+
+                // Initial size check
+                const width = chartContainerRef.current.clientWidth || 800;
+                const height = chartContainerRef.current.clientHeight || 500;
 
                 const chart = createChart(chartContainerRef.current, {
                     layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
-                    grid: { vertLines: { color: 'rgba(51, 65, 85, 0.2)' }, horzLines: { color: 'rgba(51, 65, 85, 0.2)' } },
-                    width: chartContainerRef.current.clientWidth,
-                    height: 500,
+                    grid: { vertLines: { color: 'rgba(51, 65, 85, 0.1)' }, horzLines: { color: 'rgba(51, 65, 85, 0.1)' } },
+                    width: width,
+                    height: height,
+                    margin: { top: 10, bottom: 10, right: 10, left: 10 },
                     crosshair: { mode: 0 },
                     rightPriceScale: {
                         borderColor: 'rgba(51, 65, 85, 0.5)',
@@ -355,22 +363,18 @@
                         secondsVisible: true,
                         shiftVisibleRangeOnNewBar: true,
                         rightOffset: 20,
-                        barSpacing: 2,
-                    },
-                    handleScroll: {
-                        mouseWheel: true,
-                        pressedMouseButton: 1,
-                        horzTouchDrag: true,
-                        vertTouchDrag: true,
-                    },
-                    handleScale: {
-                        axisPressedMouseButton: 1,
-                        mouseWheel: true,
-                        pinch: true,
+                        barSpacing: 6,
                     },
                 });
 
-                const handleResize = () => { chart.applyOptions({ width: chartContainerRef.current.clientWidth }); };
+                const handleResize = () => { 
+                    if (chartContainerRef.current) {
+                        chart.applyOptions({ 
+                            width: chartContainerRef.current.clientWidth,
+                            height: chartContainerRef.current.clientHeight
+                        }); 
+                    }
+                };
 
                 const candlestickSeries = chart.addCandlestickSeries({ upColor: '#10B981', downColor: '#EF4444', borderVisible: false, wickUpColor: '#10B981', wickDownColor: '#EF4444' });
                 const lineSeries = chart.addLineSeries({ color: '#10B981', lineWidth: 2, crosshairMarkerVisible: true, visible: false });
@@ -378,6 +382,11 @@
 
                 setChartInstance(chart); setSeriesInstance(candlestickSeries); setLineSeriesInstance(lineSeries); setEmaSeriesInstance(emaSeries);
                 window.addEventListener('resize', handleResize);
+                
+                // Force a second resize after mount to fix any flex-box calculation delays
+                setTimeout(handleResize, 100);
+                setTimeout(handleResize, 1000);
+
                 return () => { window.removeEventListener('resize', handleResize); chart.remove(); };
             }, []);
 
@@ -593,7 +602,16 @@
                             ))}
                         </div>
                     </div>
-                    <div ref={chartContainerRef} className="w-full h-[520px]" />
+                    <div className="relative flex-grow min-h-[400px]">
+                        {/* System Status Indicators Overlay */}
+                        {(!seriesInstance || !chartInstance) && (
+                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/40 backdrop-blur-sm rounded-2xl border border-white/5">
+                                <Icon name="loader" className="w-10 h-10 text-primary animate-spin mb-4" />
+                                <div className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Initializing Quantum Pulse...</div>
+                            </div>
+                        )}
+                        <div ref={chartContainerRef} className="w-full h-full" />
+                    </div>
                 </div>
             );
         };
