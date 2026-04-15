@@ -1,14 +1,17 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import datetime
 import json
 import os
+import httpx
 from .intel_engine import IntelligenceEngine
 
 app = FastAPI(
-    title="DEX IHSG Smart Screener API",
-    description="Advanced AI-Powered Bullish & Bearish Signal Screener for IDX BEI",
+    title="DEX IHSG Smart Screener API & Server",
+    description="Advanced AI-Powered Bullish & Bearish Signal Screener with Integrated Web Server",
     version="2.0.0"
 )
 
@@ -32,10 +35,6 @@ class MacroData(BaseModel):
     correlation_score: float
 
 # --- ENDPOINTS ---
-
-@app.get("/")
-def read_root():
-    return {"status": "ok", "message": "DEX IHSG Smart Engine Running", "version": "2.0.0"}
 
 @app.get("/api/v1/intel/process")
 def process_intel():
@@ -81,36 +80,48 @@ def get_ticker_signal(ticker: str):
 
 @app.get("/api/v1/macros", response_model=MacroData)
 def get_macro_correlation():
-    """
-    Returns live Macro Data and Pearson Correlation against IHSG.
-    """
-    # In a real scenario, this would fetch from an external API or scraper
     return {
         "usd_idr": 15650.0,
         "bi_rate": 6.00,
-        "gold_price": 2735.0, # Updated gold price to be more "current"
+        "gold_price": 2735.0,
         "correlation_score": -0.65
     }
 
-@app.post("/api/v1/backtest/run")
-def run_backtest(ticker: str, period_years: int = 5):
+# --- UNIVERSAL PROXY (Replaces proxy.php) ---
+@app.get("/proxy.php")
+@app.get("/proxy")
+async def universal_proxy(url: str):
     """
-    Initiates backtesting engine for a specific ticker.
+    High-performance proxy to bypass CORS for market data APIs.
+    Compatible with frontend calls to proxy.php.
     """
-    return {
-        "status": "simulated",
-        "ticker": ticker,
-        "period": f"{period_years} Years",
-        "metrics": {
-            "win_rate": "72%",
-            "max_drawdown": "-10.5%",
-            "sharpe_ratio": 1.65,
-            "profit_factor": 2.1
-        }
-    }
+    try:
+        async with httpx.AsyncClient() as client:
+            # Add common Headers to look like a browser
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            }
+            resp = await client.get(url, headers=headers, timeout=10)
+            return Response(content=resp.content, media_type=resp.headers.get("Content-Type"))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- STATIC FILES & DASHBOARD ---
+# Mount static files from the project root (index.html, etc.)
+# Note: In production, you'd want to be more specific, but for this "Integrated Engine" 
+# we want to serve everything from the root folder.
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+@app.get("/")
+async def serve_dashboard():
+    return FileResponse(os.path.join(ROOT_DIR, "index.html"))
+
+# Mount the entire directory for assets, scripts, and JSON data
+app.mount("/", StaticFiles(directory=ROOT_DIR), name="root")
 
 if __name__ == "__main__":
     import uvicorn
-    # Start the processing loop in a separate thread if needed, or just let it be triggered
+    # Python Server starts on port 8000
+    # Access: http://localhost:8000
     uvicorn.run(app, host="0.0.0.0", port=8000)
 

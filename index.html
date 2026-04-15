@@ -2276,25 +2276,34 @@
                                 <tr className="border-b border-slate-800/50 hover:bg-white/5 transition-all">
                                     <td className="py-6 px-6 font-black text-slate-100 uppercase text-[12px] tracking-tight">5. Trade Plan Output</td>
                                     <td className="py-6 px-6">
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <div className="bg-success/10 p-2 rounded-lg border border-success/20">
-                                                <div className="text-[7px] font-black text-success uppercase">ENTRY</div>
-                                                <div className="text-[11px] font-black text-white">Rp{signal.entry}</div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                            <div className="bg-success/10 p-3 rounded-2xl border border-success/20 ring-1 ring-success/5 shadow-[0_0_15px_rgba(22,163,74,0.05)]">
+                                                <div className="text-[8px] font-black text-success uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-success"></div> ENTRY</div>
+                                                <div className="text-[13px] font-black text-white tracking-tight">Rp{signal.entry.toLocaleString()}</div>
                                             </div>
-                                            <div className="bg-primary/10 p-2 rounded-lg border border-primary/20">
-                                                <div className="text-[7px] font-black text-primary uppercase">TP (TARGET)</div>
-                                                <div className="text-[11px] font-black text-white">Rp{signal.tp}</div>
+                                            <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 ring-1 ring-primary/5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.05)]">
+                                                <div className="text-[8px] font-black text-primary uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-primary"></div> TP (TARGET)</div>
+                                                <div className="text-[13px] font-black text-white tracking-tight">Rp{signal.tp.toLocaleString()}</div>
                                             </div>
-                                            <div className="bg-danger/10 p-2 rounded-lg border border-danger/20">
-                                                <div className="text-[7px] font-black text-danger uppercase">SL (CUTLOSS)</div>
-                                                <div className="text-[11px] font-black text-white">Rp{signal.sl}</div>
+                                            <div className="bg-danger/10 p-3 rounded-2xl border border-danger/20 ring-1 ring-danger/5 shadow-[0_0_15px_rgba(239,68,68,0.05)]">
+                                                <div className="text-[8px] font-black text-danger uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-danger"></div> SL (CUTLOSS)</div>
+                                                <div className="text-[13px] font-black text-white tracking-tight">Rp{signal.sl.toLocaleString()}</div>
+                                            </div>
+                                            <div className="bg-warning/10 p-3 rounded-2xl border border-warning/20 ring-1 ring-warning/5 shadow-[0_0_15px_rgba(245,158,11,0.05)]">
+                                                <div className="text-[8px] font-black text-warning uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-warning animate-pulse"></div> BROADCAST</div>
+                                                <div className="text-[13px] font-black text-white tracking-tight italic">
+                                                    {now.getHours() < 9 ? '08:45 (Pre-Open)' : 
+                                                     now.getHours() < 12 ? '12:00 (Session 1)' : 
+                                                     now.getHours() < 16 ? '15:50 (Pre-Close)' : '18:00 (Evening)'}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="py-6 px-6 hidden md:table-cell">
                                         <div className="text-[9px] text-slate-500 space-y-1">
-                                            <div className="font-bold text-slate-400">Auto-Generated Trade Range</div>
+                                            <div className="font-bold text-slate-400">Auto-Generated Trade Range & Scheduling</div>
                                             <div>Plan: Entry at S1, Exit at R1. Safety Stop at S1-2% Buffer.</div>
+                                            <div className="text-warning/80 font-bold">Broadcast: Optimal sharing time based on liquidity peak.</div>
                                         </div>
                                     </td>
                                 </tr>
