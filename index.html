@@ -328,6 +328,7 @@
 
         const ChartWidget = ({ ticker, currentPrice }) => {
             const chartContainerRef = useRef();
+            const lastCandleRef = useRef(null); // Professional OHLC Tracking
             const [timeframe, setTimeframe] = useState('1D');
             const [chartType, setChartType] = useState('Candle'); // Added Chart Type state
             const [chartInstance, setChartInstance] = useState(null);
@@ -403,7 +404,12 @@
             }, [chartType, seriesInstance, lineSeriesInstance]);
 
             useEffect(() => {
-                let intervalId; let isMounted = true;
+                let isMounted = true;
+                let intervalId;
+                
+                // Clear state machine on Ticker/Timeframe change to prevent data ghosting
+                lastCandleRef.current = null;
+
                 const fetchRealData = async (tf) => {
                     let interval = '1d'; let range = '1y';
                     if (tf === '1S' || tf === '1M') { interval = '1m'; range = '5d'; }
@@ -606,7 +612,7 @@
                 return () => { isMounted = false; if (intervalId) clearInterval(intervalId); };
             }, [timeframe, ticker, seriesInstance, lineSeriesInstance, emaSeriesInstance, chartInstance]);
 
-            // REAL-TIME BROADCAST: Listen to price changes from the main engine and update chart instantly
+            // REAL-TIME BROADCAST: Professional-grade Candlestick State Machine
             useEffect(() => {
                 if (!seriesInstance || !currentPrice) return;
                 
@@ -619,27 +625,32 @@
                 } else if (timeframe === '1M' || timeframe === '1H') {
                     const step = timeframe === '1M' ? 60 : 3600;
                     timeVal = Math.floor(nowSeconds / step) * step;
-                    // Adjust timezone for intraday if needed (consistent with fetch)
-                    timeVal += 7 * 3600;
+                    timeVal += 7 * 3600; // Alignment with Indo Time
                 }
 
+                const last = lastCandleRef.current;
+                
+                // If the time bucket is the same, evolve the candle. If new bucket, start fresh.
+                const isNewBucket = !last || last.time !== timeKey(timeVal);
+                
+                function timeKey(t) { return typeof t === 'string' ? t : t; }
+
+                const updatedCandle = isNewBucket 
+                    ? { time: timeVal, open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice }
+                    : { 
+                        ...last, 
+                        high: Math.max(last.high, currentPrice), 
+                        low: Math.min(last.low, currentPrice), 
+                        close: currentPrice 
+                      };
+
                 try {
-                    // Update only if we have a valid price
-                    seriesInstance.update({
-                        time: timeVal,
-                        value: currentPrice, // Automatic high/low/close update by LightweightCharts
-                        // We provide explicit values for better precision in candle mode
-                        open: undefined, // Let it use existing or new
-                        high: currentPrice,
-                        low: currentPrice,
-                        close: currentPrice
-                    });
+                    seriesInstance.update(updatedCandle);
+                    if (lineSeriesInstance) lineSeriesInstance.update({ time: timeVal, value: currentPrice });
                     
-                    if (lineSeriesInstance) {
-                        lineSeriesInstance.update({ time: timeVal, value: currentPrice });
-                    }
+                    lastCandleRef.current = updatedCandle;
                 } catch (e) {
-                    // Silently fail if time scale is not ready
+                    // Fail silently during re-init
                 }
             }, [currentPrice, seriesInstance, timeframe, lineSeriesInstance]);
 
