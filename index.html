@@ -453,61 +453,49 @@
                             }
                         }
 
-                        // HIGH-SPEED SINK: Precise Local Engine Alignment
-                        const localTicker = ticker === 'IHSG' ? '^JKSE' : `${ticker}.JK`;
-                        if (localData[localTicker]) {
-                            const l = localData[localTicker];
-                            const lTimes = l.timestamp || [];
-                            const lPrices = l.close || [];
-                            
-                            for (let j = 0; j < lTimes.length; j++) {
-                                if (lPrices[j] === null) continue;
-                                let lt = lTimes[j];
+                        // HIGH-SPEED SINK: Precise Local Engine Alignment (GROUND TRUTH)
+                        const localKeys = ticker === 'IHSG' ? ['^JKSE', 'IHSG'] : [`${ticker}.JK`, ticker];
+                        localKeys.forEach(k => {
+                            if (localData[k]) {
+                                const l = localData[k];
+                                const lTimes = l.timestamp || [];
+                                const lPrices = l.close || [];
                                 
-                                // Same quantization for local data
-                                if (timeframe === '1S') lt = Math.floor(lt);
-                                else if (timeframe === '1M') lt = Math.floor(lt / 60) * 60;
-                                else if (timeframe === '1H') lt = Math.floor(lt / 3600) * 3600;
-                                
-                                let timeKey = lt;
-                                if (timeframe === '1D' || timeframe === '1Mo') {
-                                    const d = new Date(lt * 1000);
-                                    timeKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                                }
+                                for (let j = 0; j < lTimes.length; j++) {
+                                    if (lPrices[j] === null) continue;
+                                    let lt = lTimes[j];
+                                    
+                                    if (timeframe === '1S') lt = Math.floor(lt);
+                                    else if (timeframe === '1M') lt = Math.floor(lt / 60) * 60;
+                                    else if (timeframe === '1H') lt = Math.floor(lt / 3600) * 3600;
+                                    
+                                    let timeKey = lt;
+                                    if (timeframe === '1D' || timeframe === '1Mo') {
+                                        const d = new Date(lt * 1000);
+                                        timeKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                    }
 
-                                // Update or Append local data
-                                const existing = formattedData.find(d => d.time === timeKey);
-                                if (existing) {
-                                    existing.close = lPrices[j];
-                                    existing.high = Math.max(existing.high, lPrices[j]);
-                                    existing.low = Math.min(existing.low, lPrices[j]);
-                                } else {
-                                    formattedData.push({ 
+                                    // LOCAL DATA OVERWRITE: Local is the source of truth for the user
+                                    mapTime[timeKey] = { 
                                         time: timeKey, 
                                         open: lPrices[j], high: lPrices[j], low: lPrices[j], close: lPrices[j] 
-                                    });
+                                    };
                                 }
                             }
-                        }
+                        });
 
-                        const uniqueData = [];
-                        const mapTime = {};
-                        for (let d of formattedData) {
-                            if (!mapTime[d.time]) {
-                                mapTime[d.time] = { ...d };
-                                uniqueData.push(mapTime[d.time]);
-                            } else {
-                                const exist = mapTime[d.time];
-                                exist.high = Math.max(exist.high, d.high);
-                                exist.low = Math.min(exist.low, d.low);
-                                exist.close = d.close;
-                            }
-                        }
-                        
-                        const sortedData = uniqueData.sort((a, b) => {
+                        const sortedData = Object.values(mapTime).sort((a, b) => {
                             if (typeof a.time === 'string') return a.time.localeCompare(b.time);
                             return a.time - b.time;
                         });
+
+                        // PREVENT JUMPS: Patch latest candle with current dash price if history is still stale
+                        if (sortedData.length > 0 && currentPrice) {
+                            const last = sortedData[sortedData.length - 1];
+                            last.close = currentPrice;
+                            last.high = Math.max(last.high, currentPrice);
+                            last.low = Math.min(last.low, currentPrice);
+                        }
 
                         // INTELLIGENT EMA CALCULATION (Period: 20)
                         if (emaSeriesInstance && sortedData.length > 20) {
@@ -672,9 +660,10 @@
                     seriesInstance.update(updatedCandle);
                     if (lineSeriesInstance) lineSeriesInstance.update({ time: bucketTime, value: currentPrice });
                     
-                    // Auto-Scale on Big Moves
+                    // Auto-Scale on Big Moves to ensure price visibility
                     if (isNewBucket && chartInstance) {
-                        // chartInstance.timeScale().fitContent(); // Enable only if user wants aggressive scrolling
+                        chartInstance.timeScale().fitContent();
+                        chartInstance.priceScale('right').applyOptions({ autoScale: true });
                     }
                     
                     lastCandleRef.current = updatedCandle;
