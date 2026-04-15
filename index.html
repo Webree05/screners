@@ -597,10 +597,18 @@
 
                     if (!isMounted || data.length === 0) return;
 
-                    seriesInstance.setData(data);
+                    // Ensure time uniqueness and sort
+                    const uniqueDataMap = {};
+                    data.forEach(d => { uniqueDataMap[d.time] = d; });
+                    const finalData = Object.values(uniqueDataMap).sort((a, b) => {
+                        if (typeof a.time === 'string') return a.time.localeCompare(b.time);
+                        return a.time - b.time;
+                    });
+
+                    seriesInstance.setData(finalData);
 
                     if (lineSeriesInstance) {
-                        const lineData = data.map(d => ({ time: d.time, value: d.close }));
+                        const lineData = finalData.map(d => ({ time: d.time, value: d.close }));
                         lineSeriesInstance.setData(lineData);
                     }
 
@@ -642,46 +650,67 @@
 
             // REAL-TIME BROADCAST: Professional-grade Candlestick State Machine
             useEffect(() => {
-                if (!seriesInstance || !currentPrice) return;
+                if (!seriesInstance || !currentPrice || !chartInstance) return;
 
                 const nowSeconds = Math.floor(Date.now() / 1000);
                 let timeVal = nowSeconds;
 
+                // Time Quantization Logic for different Timeframes
                 if (timeframe === '1D' || timeframe === '1Mo') {
                     const d = new Date(nowSeconds * 1000);
                     timeVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 } else if (timeframe === '1M' || timeframe === '1H') {
                     const step = timeframe === '1M' ? 60 : 3600;
                     timeVal = Math.floor(nowSeconds / step) * step;
+                } else if (timeframe === '1S') {
+                    timeVal = nowSeconds;
                 }
 
-                // QUANTIZATION RE-SYNC: Ensure the live bucket matches the timeline accurately
-                const bucketTime = (timeframe === '1D' || timeframe === '1Mo') ? timeVal : timeVal;
+                // Professional OHLC Update Logic
                 const last = lastCandleRef.current;
-                const isNewBucket = !last || last.time !== bucketTime;
+                const isNewBucket = !last || last.time !== timeVal;
 
-                const updatedCandle = isNewBucket
-                    ? { time: bucketTime, open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice }
-                    : {
+                let updatedCandle;
+                if (isNewBucket) {
+                    // Create new candle starting at the previous close or current price
+                    const openPrice = last ? last.close : currentPrice;
+                    updatedCandle = { 
+                        time: timeVal, 
+                        open: openPrice, 
+                        high: Math.max(openPrice, currentPrice), 
+                        low: Math.min(openPrice, currentPrice), 
+                        close: currentPrice 
+                    };
+                } else {
+                    // Update existing candle
+                    updatedCandle = {
                         ...last,
                         high: Math.max(last.high, currentPrice),
                         low: Math.min(last.low, currentPrice),
                         close: currentPrice
                     };
+                }
 
                 try {
+                    // Apply update to candlestick series
                     seriesInstance.update(updatedCandle);
-                    if (lineSeriesInstance) lineSeriesInstance.update({ time: bucketTime, value: currentPrice });
+                    
+                    // Apply update to line series (for "Line" chart mode)
+                    if (lineSeriesInstance) {
+                        lineSeriesInstance.update({ time: timeVal, value: currentPrice });
+                    }
 
-                    // Auto-Scale on Big Moves to ensure price visibility
-                    if (isNewBucket && chartInstance) {
-                        // chartInstance.timeScale().fitContent(); // Removed to prevent sudden zoom-out jumps
-                        chartInstance.priceScale('right').applyOptions({ autoScale: true });
+                    // Auto-Scale Control: Ensure price is always in view during volatility
+                    chartInstance.priceScale('right').applyOptions({ autoScale: true });
+
+                    // Only smooth-scroll to newest data if it's actually new
+                    if (isNewBucket) {
+                        chartInstance.timeScale().scrollToPosition(0, true);
                     }
 
                     lastCandleRef.current = updatedCandle;
                 } catch (e) {
-                    // Fail silently
+                    console.error("Real-time Update Error:", e);
                 }
             }, [currentPrice, seriesInstance, timeframe, lineSeriesInstance, chartInstance]);
 
