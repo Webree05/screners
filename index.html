@@ -416,9 +416,15 @@
                     const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}&disableCache=true&_=${Date.now()}`;
 
                     try {
-                        const res = await fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`);
+                        const [res, localRes] = await Promise.all([
+                            fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`),
+                            fetch(`market_data.json?_=${Date.now()}`)
+                        ]);
+                        
                         if (!res.ok) return [];
                         const json = await res.json();
+                        const localData = localRes.ok ? await localRes.json() : {};
+                        
                         if (!json.chart || !json.chart.result || json.chart.result.length === 0) return [];
                         const result = json.chart.result[0];
                         const timestamps = result.timestamp || [];
@@ -428,19 +434,46 @@
                         for (let i = 0; i < timestamps.length; i++) {
                             if (quote.close[i] !== null) {
                                 let t = timestamps[i];
-
-                                // Adjust timezone to Indonesia/Jakarta (UTC+7) for intraday data
-                                // This ensures the market opens at 09:00 instead of 02:00 (UTC)
-                                if (timeframe !== '1D' && timeframe !== '1Mo') {
-                                    t += 7 * 3600;
-                                }
-
-                                // Normalisasi timestamp harian/bulanan agar tidak mencetak rentetan candle fake ke kanan
+                                if (timeframe !== '1D' && timeframe !== '1Mo') t += 7 * 3600;
                                 if (timeframe === '1D' || timeframe === '1Mo') {
                                     const d = new Date(t * 1000);
                                     t = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                 }
                                 formattedData.push({ time: t, open: quote.open[i], high: quote.high[i], low: quote.low[i], close: quote.close[i] });
+                            }
+                        }
+
+                        // HIGH-SPEED SINK: Patch Yahoo data with real-time local server data
+                        // This eliminates the 15-minute delay from external APIs
+                        const localTicker = ticker === 'IHSG' ? '^JKSE' : `${ticker}.JK`;
+                        if (localData[localTicker]) {
+                            const l = localData[localTicker];
+                            const lTimes = l.timestamp || [];
+                            const lPrices = l.close || [];
+                            
+                            for (let j = 0; j < lTimes.length; j++) {
+                                if (lPrices[j] === null) continue;
+                                let lt = lTimes[j];
+                                if (timeframe !== '1D' && timeframe !== '1Mo') lt += 7 * 3600;
+                                
+                                let timeKey = lt;
+                                if (timeframe === '1D' || timeframe === '1Mo') {
+                                    const d = new Date(lt * 1000);
+                                    timeKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                }
+
+                                // Update or Append local data
+                                const existing = formattedData.find(d => d.time === timeKey);
+                                if (existing) {
+                                    existing.close = lPrices[j];
+                                    existing.high = Math.max(existing.high, lPrices[j]);
+                                    existing.low = Math.min(existing.low, lPrices[j]);
+                                } else {
+                                    formattedData.push({ 
+                                        time: timeKey, 
+                                        open: lPrices[j], high: lPrices[j], low: lPrices[j], close: lPrices[j] 
+                                    });
+                                }
                             }
                         }
 
@@ -465,7 +498,7 @@
 
                         return sortedData;
                     } catch (e) { 
-                        console.error("Chart API Error, initiating fallback:", e);
+                        console.error("Chart Multi-Source Error, initiating fallback:", e);
                         return []; 
                     }
                 };
