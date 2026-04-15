@@ -699,7 +699,7 @@
                 {
                     id: "Screener", label: "Screener", icon: "filter", subTabs: [
                         { id: "InflowOutflow", label: "V3.0 Analyzer" },
-                        { id: "DragonFlow", label: "Smart Matrix" },
+                        { id: "DragonFlow", label: "Dragon Flow" },
                         { id: "BrokerSummary", label: "Broker Summary" },
                         { id: "BidOffer", label: "BidOffer SMC" }
                     ]
@@ -1704,7 +1704,7 @@
             );
         };
 
-        const SmartMatrixView = ({ stocks, watchlist, toggleWatchlist, activeTicker, setActiveTicker }) => {
+        const DragonFlowView = ({ stocks, watchlist, toggleWatchlist, activeTicker, setActiveTicker }) => {
             if (!stocks || stocks.length === 0) {
                 return (
                     <div className="flex flex-col items-center justify-center p-20 bg-[#0B121E] rounded-[2.5rem] border border-slate-800">
@@ -1759,7 +1759,7 @@
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
                         <div className="relative z-10">
                             <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase flex items-center gap-3">
-                                Intelligence Matrix
+                                Dragon <span className="text-primary">Flow</span>
                             </h2>
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Deep Hierarchical Market Analysis Engine v5.0</p>
                         </div>
@@ -1787,10 +1787,7 @@
                         </div>
                     </div>
 
-                    {/* THE FLOW NETWORK INTELLIGENCE MATRIX (THE "BUBBLE" VIEW) */}
-                    <div className="mb-8 p-0 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
-                        <BubbleFlow ticker={activeTicker} stocks={stocks} />
-                    </div>
+
 
                     {/* Live Candlestick Market Chart */}
                     <div className="mb-8 h-[650px] bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden glass-panel relative">
@@ -1817,8 +1814,19 @@
                     </div>
 
                     {/* Market Matrix Rotation Flow Chart */}
-                    <div className="mb-8 p-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
-                        <FlowIndicatorChart ticker={activeTicker} stocks={stocks} />
+                    <div className="mb-8 bg-[#0B121E] rounded-[2.5rem] border border-slate-800 shadow-2xl relative overflow-hidden">
+                        <div className="p-6 border-b border-slate-800 bg-[#0F172A]/80 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-secondary/10 border border-secondary/20 flex items-center justify-center">
+                                <Icon name="bar-chart-2" className="text-secondary w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-white uppercase tracking-widest leading-none mb-1">Market Capital Rotation Flow</h3>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Ticker: {activeTicker} | Quarterly Net-Flow Histogram</p>
+                            </div>
+                        </div>
+                        <div className="p-8">
+                            <FlowIndicatorChart ticker={activeTicker} stocks={stocks} />
+                        </div>
                     </div>
 
                     {/* Order Book (Bid/Offer) Section */}
@@ -2667,7 +2675,7 @@
                             {activeTab === "Screener" && (
                                 <React.Fragment>
                                     {activeScreenerTab === "InflowOutflow" && <ScreenerView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
-                                    {activeScreenerTab === "DragonFlow" && <SmartMatrixView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
+                                    {activeScreenerTab === "DragonFlow" && <DragonFlowView stocks={displayStocks} watchlist={watchlist} toggleWatchlist={toggleWatchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
                                     {activeScreenerTab === "BrokerSummary" && <BrokerSummaryView stocks={displayStocks} watchlist={watchlist} activeTicker={activeTicker} setActiveTicker={setActiveTicker} />}
                                     {activeScreenerTab === "BidOffer" && <OrderbookView stocks={displayStocks} activeTicker={activeTicker} />}
                                 </React.Fragment>
