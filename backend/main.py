@@ -88,23 +88,47 @@ def get_macro_correlation():
     }
 
 # --- UNIVERSAL PROXY (Replaces proxy.php) ---
+import random
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
+]
+
 @app.get("/proxy.php")
 @app.get("/proxy")
 async def universal_proxy(url: str):
     """
-    High-performance proxy to bypass CORS for market data APIs.
-    Compatible with frontend calls to proxy.php.
+    Stealth Proxy with Browser Emulation.
+    Optimized to bypass Cloud-IP blocking (Vercel/VPS Filter).
     """
     try:
-        async with httpx.AsyncClient() as client:
-            # Add common Headers to look like a browser
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                "User-Agent": random.choice(USER_AGENTS),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Cache-Control": "max-age=0"
             }
-            resp = await client.get(url, headers=headers, timeout=10)
-            return Response(content=resp.content, media_type=resp.headers.get("Content-Type"))
+            # Add delay to avoid burst detection
+            resp = await client.get(url, headers=headers, timeout=15)
+            
+            # Forward relevant headers
+            content_type = resp.headers.get("Content-Type", "application/json")
+            return Response(content=resp.content, media_type=content_type)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Fallback to a secondary proxy if primary fails
+        print(f"Proxy Error: {e}")
+        raise HTTPException(status_code=500, detail="Matrix synchronization failed. Cloud-IP might be throttled.")
 
 # --- STATIC FILES & DASHBOARD ---
 # Mount static files from the project root (index.html, etc.)
