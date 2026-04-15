@@ -379,6 +379,8 @@
                     <div class="signal-score">Final Score 📉 <span id="resScore">-</span></div>
                     <div class="signal-text" id="resSignal">-</div>
                 </div>
+                <!-- AI Insight Placeholder -->
+                <div id="aiInfo" style="display: none; animation: fadeIn 0.8s ease;"></div>
             </section>
         </article>
     </main>
@@ -521,10 +523,11 @@
                 }
             });
 
-            calculateBtn.addEventListener('click', () => {
+            calculateBtn.addEventListener('click', async () => {
                 // Reset errors and hide results on new calculation
                 errorMessage.style.display = 'none';
                 resultsSection.style.display = 'none';
+                document.getElementById('aiInfo').style.display = 'none';
                 
                 // Binding Inputs
                 const pt = parseFloat(document.getElementById('pt').value);
@@ -606,6 +609,40 @@
                     
                     resSignal.textContent = signalTextStr;
                     resSignal.className = "signal-text " + signalClassStr;
+
+                    // AI Neural Sync - Fetch Advanced Insights
+                    const ticker = document.getElementById('ticker-search').value.trim().toUpperCase();
+                    if (ticker) {
+                        try {
+                            const aiRes = await fetch(`http://localhost:8000/api/v1/signals/${ticker}`).catch(() => null);
+                            if (aiRes && aiRes.ok) {
+                                const aiData = await aiRes.json();
+                                const aiInfo = document.getElementById('aiInfo');
+                                aiInfo.innerHTML = `
+                                    <div style="margin-top: 1.5rem; padding: 1.5rem; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px;">
+                                        <h4 style="color: #0369a1; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            <span>🧠 AI Smart Engine Insight</span>
+                                            <span style="font-size: 0.7rem; background: #0ea5e9; color: white; padding: 0.1rem 0.4rem; border-radius: 4px;">ADVANCED</span>
+                                        </h4>
+                                        <p style="font-size: 0.9rem; color: #0c4a6e;">
+                                            AI Score: <strong>${aiData.score.toFixed(4)}</strong> | 
+                                            Trend: <strong>${aiData.indicators.ema_trend}</strong> | 
+                                            RSI: <strong>${aiData.indicators.rsi.toFixed(1)}</strong>
+                                        </p>
+                                        <div style="margin-top: 0.75rem; font-weight: bold; color: ${aiData.signal === 'BUY' ? '#16a34a' : aiData.signal === 'SELL' ? '#dc2626' : '#ca8a04'}">
+                                            AI Recommendation: ${aiData.signal}
+                                        </div>
+                                        ${aiData.signal === signalTextStr ? 
+                                            `<p style="margin-top: 0.5rem; font-size: 0.85rem; color: #16a34a; font-weight: 600;">✅ Hubungan Sinergi: Model AI mengonfirmasi sinyal statistik ini.</p>` : 
+                                            `<p style="margin-top: 0.5rem; font-size: 0.85rem; color: #ca8a04; font-weight: 600;">⚠️ Divergensi Terdeteksi: Model AI menyarankan kehati-hatian (Sikap berbeda).</p>`}
+                                    </div>
+                                `;
+                                aiInfo.style.display = 'block';
+                            }
+                        } catch (e) {
+                            console.log("AI Engine not reachable", e);
+                        }
+                    }
 
                     // Tampilkan section hasil
                     resultsSection.style.display = 'block';

@@ -198,6 +198,20 @@ while (true) {
                 @unlink($filePath); // Bersihkan file lama jika ada (optional, rename akan overwrite)
                 rename($tempFile, $filePath);
                 log_message("UP-TO-DATE: Sukses menyimpan " . count($market_data) . " emiten. Total database: " . count($merged_data));
+                
+                // Trigger AI Intelligence Engine Processing
+                log_message("Mengaktifkan AI Smart Engine untuk mengolah data...");
+                $ch_intel = curl_init('http://localhost:8000/api/v1/intel/process');
+                curl_setopt($ch_intel, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch_intel, CURLOPT_TIMEOUT, 5);
+                $res_intel = curl_exec($ch_intel);
+                $httpCode_intel = curl_getinfo($ch_intel, CURLINFO_HTTP_CODE);
+                if ($httpCode_intel === 200) {
+                    log_message("AI ENGINE: Sukses memproses data pasar terbaru.");
+                } else {
+                    log_message("AI ENGINE: Gagal memicu pemrosesan data (HTTP $httpCode_intel). Pastikan Python Engine berjalan.");
+                }
+                curl_close($ch_intel);
             } else {
                 log_message("Error: Gagal membuat file temporary untuk market data.");
             }

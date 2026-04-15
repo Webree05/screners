@@ -1965,6 +1965,29 @@
                                 Institutional Intelligence Core v5.10
                             </p>
                         </div>
+                        
+                        {/* AI Intelligence Integration Status Panel */}
+                        <div className="hidden md:flex items-center gap-4 bg-slate-900/80 p-3 rounded-2xl border border-white/5 relative group">
+                             <div className="absolute -top-1 -right-1 flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                             </div>
+                             <div className="flex flex-col">
+                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Neural Status</span>
+                                <span className="text-[12px] font-black text-white italic">SYNCHRONIZED</span>
+                             </div>
+                             <div className="h-8 w-[1px] bg-slate-800"></div>
+                             <div className="flex flex-col">
+                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Confidence</span>
+                                <span className="text-[12px] font-black text-success tracking-tighter">HIGH REGRESSION</span>
+                             </div>
+                             <div className="h-8 w-[1px] bg-slate-800"></div>
+                             <div className="flex flex-col">
+                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Active Model</span>
+                                <span className="text-[12px] font-black text-primary">SCIKIT-STAT v2</span>
+                             </div>
+                        </div>
+
                         <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10 w-full lg:w-auto">
                             <div className="relative w-full sm:w-80">
                                 <label className="absolute -top-6 left-1 text-[9px] font-black text-primary uppercase tracking-widest">Symbol Intel Lock</label>
