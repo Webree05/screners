@@ -220,12 +220,22 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
 
-        .glow-sm { text-shadow: 0 0 10px var(--primary-color); }
-        
+        .glow-sm {
+            text-shadow: 0 0 10px var(--primary-color);
+        }
+
         @keyframes cyber-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(var(--primary-rgb), 0); }
-            100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(var(--primary-rgb), 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0);
+            }
         }
 
         .animate-cyber-pulse {
@@ -239,10 +249,23 @@
         }
 
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: #0F172A; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0F172A;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
     </style>
 
     <!-- React -->
@@ -368,12 +391,12 @@
                     },
                 });
 
-                const handleResize = () => { 
+                const handleResize = () => {
                     if (chartContainerRef.current) {
-                        chart.applyOptions({ 
+                        chart.applyOptions({
                             width: chartContainerRef.current.clientWidth,
                             height: chartContainerRef.current.clientHeight
-                        }); 
+                        });
                     }
                 };
 
@@ -383,7 +406,7 @@
 
                 setChartInstance(chart); setSeriesInstance(candlestickSeries); setLineSeriesInstance(lineSeries); setEmaSeriesInstance(emaSeries);
                 window.addEventListener('resize', handleResize);
-                
+
                 // Force a second resize after mount to fix any flex-box calculation delays
                 setTimeout(handleResize, 100);
                 setTimeout(handleResize, 1000);
@@ -406,7 +429,7 @@
             useEffect(() => {
                 let isMounted = true;
                 let intervalId;
-                
+
                 // Clear state machine on Ticker/Timeframe change to prevent data ghosting
                 lastCandleRef.current = null;
 
@@ -426,11 +449,11 @@
                             fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`),
                             fetch(`market_data.json?_=${Date.now()}`)
                         ]);
-                        
+
                         if (!res.ok) return [];
                         const json = await res.json();
                         const localData = localRes.ok ? await localRes.json() : {};
-                        
+
                         if (!json.chart || !json.chart.result || json.chart.result.length === 0) return [];
                         const result = json.chart.result[0];
                         const timestamps = result.timestamp || [];
@@ -440,7 +463,7 @@
                         for (let i = 0; i < timestamps.length; i++) {
                             if (quote.close[i] !== null) {
                                 let t = timestamps[i];
-                                
+
                                 // FORCE QUANTIZATION: Align to timeframe buckets to prevent 'ngawur' gaps
                                 if (timeframe === '1S') t = Math.floor(t);
                                 else if (timeframe === '1M') t = Math.floor(t / 60) * 60;
@@ -460,15 +483,15 @@
                                 const l = localData[k];
                                 const lTimes = l.timestamp || [];
                                 const lPrices = l.close || [];
-                                
+
                                 for (let j = 0; j < lTimes.length; j++) {
                                     if (lPrices[j] === null) continue;
                                     let lt = lTimes[j];
-                                    
+
                                     if (timeframe === '1S') lt = Math.floor(lt);
                                     else if (timeframe === '1M') lt = Math.floor(lt / 60) * 60;
                                     else if (timeframe === '1H') lt = Math.floor(lt / 3600) * 3600;
-                                    
+
                                     let timeKey = lt;
                                     if (timeframe === '1D' || timeframe === '1Mo') {
                                         const d = new Date(lt * 1000);
@@ -476,9 +499,9 @@
                                     }
 
                                     // LOCAL DATA OVERWRITE: Local is the source of truth for the user
-                                    mapTime[timeKey] = { 
-                                        time: timeKey, 
-                                        open: lPrices[j], high: lPrices[j], low: lPrices[j], close: lPrices[j] 
+                                    mapTime[timeKey] = {
+                                        time: timeKey,
+                                        open: lPrices[j], high: lPrices[j], low: lPrices[j], close: lPrices[j]
                                     };
                                 }
                             }
@@ -493,7 +516,7 @@
                         // NO-FLAT ALGORITHM: Enforce realistic candle bodies
                         for (let i = 0; i < sortedData.length; i++) {
                             const d = sortedData[i];
-                            const prev = i > 0 ? sortedData[i-1] : null;
+                            const prev = i > 0 ? sortedData[i - 1] : null;
                             if (d.open === d.close && prev) {
                                 d.open = prev.close;
                                 d.high = Math.max(d.open, d.close) * 1.001;
@@ -505,7 +528,7 @@
                         if (currentPrice) {
                             const now = new Date();
                             const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                            const todaySeconds = Math.floor(now.setHours(0,0,0,0) / 1000) + 7 * 3600;
+                            const todaySeconds = Math.floor(now.setHours(0, 0, 0, 0) / 1000) + 7 * 3600;
 
                             const step = timeframe === '1M' ? 60 : (timeframe === '1H' ? 3600 : null);
                             let activeTimeKey;
@@ -514,7 +537,7 @@
                             } else {
                                 activeTimeKey = step ? (Math.floor(Date.now() / 1000 / step) * step + 7 * 3600) : Math.floor(Date.now() / 1000);
                             }
-                            
+
                             const last = sortedData[sortedData.length - 1];
                             if (!last || last.time !== activeTimeKey) {
                                 sortedData.push({
@@ -537,7 +560,7 @@
                             const period = 20;
                             const k = 2 / (period + 1);
                             let ema = sortedData[0].close;
-                            
+
                             for (let i = 0; i < sortedData.length; i++) {
                                 ema = (sortedData[i].close * k) + (ema * (1 - k));
                                 if (i >= period) {
@@ -552,9 +575,9 @@
                         }
 
                         return sortedData;
-                    } catch (e) { 
+                    } catch (e) {
                         console.error("Chart Multi-Source Error, initiating fallback:", e);
-                        return []; 
+                        return [];
                     }
                 };
 
@@ -562,7 +585,7 @@
                     if (!seriesInstance || !emaSeriesInstance || !chartInstance) return;
 
                     let data = await fetchRealData(timeframe);
-                    
+
                     // FALLBACK PROTOCOL: If data is empty (API failure), generate high-fidelity synthetic data
                     // This ensures the dashboard always looks "Live" and "Perfect" as requested.
                     if (data.length === 0) {
@@ -570,7 +593,7 @@
                         const now = Math.floor(Date.now() / 1000);
                         let lastPrice = ticker === 'IHSG' ? 7200 : 1000;
                         const step = timeframe === '1S' ? 1 : (timeframe === '1M' ? 60 : (timeframe === '1H' ? 3600 : 86400));
-                        
+
                         for (let i = count; i > 0; i--) {
                             const t = now - (i * step);
                             const open = lastPrice;
@@ -578,7 +601,7 @@
                             const close = open + vol;
                             const high = Math.max(open, close) + (Math.random() * open * 0.002);
                             const low = Math.min(open, close) - (Math.random() * open * 0.002);
-                            
+
                             let timeVal = t;
                             if (timeframe === '1D' || timeframe === '1Mo') {
                                 const d = new Date(t * 1000);
@@ -664,10 +687,10 @@
             // REAL-TIME BROADCAST: Professional-grade Candlestick State Machine
             useEffect(() => {
                 if (!seriesInstance || !currentPrice) return;
-                
+
                 const nowSeconds = Math.floor(Date.now() / 1000);
                 let timeVal = nowSeconds;
-                
+
                 if (timeframe === '1D' || timeframe === '1Mo') {
                     const d = new Date(nowSeconds * 1000);
                     timeVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -681,25 +704,25 @@
                 const last = lastCandleRef.current;
                 const isNewBucket = !last || last.time !== bucketTime;
 
-                const updatedCandle = isNewBucket 
+                const updatedCandle = isNewBucket
                     ? { time: bucketTime, open: currentPrice, high: currentPrice, low: currentPrice, close: currentPrice }
-                    : { 
-                        ...last, 
-                        high: Math.max(last.high, currentPrice), 
-                        low: Math.min(last.low, currentPrice), 
-                        close: currentPrice 
-                      };
+                    : {
+                        ...last,
+                        high: Math.max(last.high, currentPrice),
+                        low: Math.min(last.low, currentPrice),
+                        close: currentPrice
+                    };
 
                 try {
                     seriesInstance.update(updatedCandle);
                     if (lineSeriesInstance) lineSeriesInstance.update({ time: bucketTime, value: currentPrice });
-                    
+
                     // Auto-Scale on Big Moves to ensure price visibility
                     if (isNewBucket && chartInstance) {
                         chartInstance.timeScale().fitContent();
                         chartInstance.priceScale('right').applyOptions({ autoScale: true });
                     }
-                    
+
                     lastCandleRef.current = updatedCandle;
                 } catch (e) {
                     // Fail silently
@@ -1488,10 +1511,10 @@
 
                                                             {/* Sentiment Label */}
                                                             <div className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border flex-1 text-center whitespace-nowrap ${s.score > 75 ? 'bg-emerald-600 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
-                                                                    s.score > 58 ? 'bg-success/20 border-success/30 text-success' :
-                                                                        s.score < 25 ? 'bg-rose-600 border-rose-500 text-white shadow-[0_0_10px_rgba(244,63,94,0.3)]' :
-                                                                            s.score < 42 ? 'bg-danger/20 border-danger/30 text-danger' :
-                                                                                'bg-slate-800 border-slate-700 text-slate-400'
+                                                                s.score > 58 ? 'bg-success/20 border-success/30 text-success' :
+                                                                    s.score < 25 ? 'bg-rose-600 border-rose-500 text-white shadow-[0_0_10px_rgba(244,63,94,0.3)]' :
+                                                                        s.score < 42 ? 'bg-danger/20 border-danger/30 text-danger' :
+                                                                            'bg-slate-800 border-slate-700 text-slate-400'
                                                                 }`}>
                                                                 {s.score > 75 ? 'Strong Inflow' :
                                                                     s.score > 58 ? 'Net Inflow' :
@@ -2015,6 +2038,7 @@
                         </div>
                         <div className="p-6 h-[550px]">
                             <ChartWidget ticker={activeTicker} currentPrice={stock.ap} />
+                            masih rancu bro aduh , ini kenapa bro , apa masalahnya dan kasih solusinya bro , tidak sesuai dengan market ihsg real life , tolong perbaiki bro dan jika ada errornya langsung perbaiki bro jangan langsung diinput dan jangan ada yang dihapus perlatan dan rutenya bro dan rumusnya juga jangan dihapus bro , kerjain secakep mungkin se maksimal mungkin , hingga hasilnya bisa perfect banget bro.
                         </div>
                     </div>
 
@@ -2172,7 +2196,7 @@
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Dividend Yield</span>
-                                                <span className="text-sm font-black text-success">{( (INDEX_BASES[stock.sector]?.dividend || 10) / (stock.ap || 1000) * 100 ).toFixed(2)}%</span>
+                                                <span className="text-sm font-black text-success">{((INDEX_BASES[stock.sector]?.dividend || 10) / (stock.ap || 1000) * 100).toFixed(2)}%</span>
                                             </div>
                                         </div>
                                     </td>
@@ -2381,8 +2405,8 @@
                             {data.quarters.map((q, i) => (
                                 <div key={i} className="flex flex-col items-center flex-1 group">
                                     <div className="relative w-full h-full flex flex-col justify-end items-center">
-                                        <div 
-                                            className={`w-full rounded-t-lg transition-all duration-1000 hover:brightness-125 ${q.netflow > 0 ? 'bg-gradient-to-t from-success/20 to-success/60' : 'bg-gradient-to-t from-danger/20 to-danger/60'}`} 
+                                        <div
+                                            className={`w-full rounded-t-lg transition-all duration-1000 hover:brightness-125 ${q.netflow > 0 ? 'bg-gradient-to-t from-success/20 to-success/60' : 'bg-gradient-to-t from-danger/20 to-danger/60'}`}
                                             style={{ height: `${Math.max(5, Math.abs(q.netflow) * 1.5)}%` }} // Ensure at least 5% visible height
                                         ></div>
                                         <div className={`absolute top-0 text-[7px] font-black ${q.netflow > 0 ? 'text-success' : 'text-danger'} opacity-0 group-hover:opacity-100 transition-opacity`}>
