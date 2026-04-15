@@ -465,8 +465,7 @@
                                         let t = timestamps[i];
                                         let timeKey = t;
 
-                                        if (tf === '1S') timeKey = Math.floor(t);
-                                        else if (tf === '1M') timeKey = Math.floor(t / 60) * 60;
+                                        if (tf === '1S' || tf === '1M') timeKey = Math.floor(t);
                                         else if (tf === '1H') timeKey = Math.floor(t / 3600) * 3600;
                                         else {
                                             const d = new Date(t * 1000);
@@ -498,8 +497,7 @@
                                     let lt = lTimes[j];
                                     let timeKey = lt;
 
-                                    if (tf === '1S') timeKey = Math.floor(lt);
-                                    else if (tf === '1M') timeKey = Math.floor(lt / 60) * 60;
+                                    if (tf === '1S' || tf === '1M') timeKey = Math.floor(lt);
                                     else if (tf === '1H') timeKey = Math.floor(lt / 3600) * 3600;
                                     else {
                                         const d = new Date(lt * 1000);
@@ -522,22 +520,35 @@
                         // Ensure latest price is injected as the final point
                         if (currentPrice && sortedData.length > 0) {
                             const last = sortedData[sortedData.length - 1];
-                            const now = Math.floor(Date.now() / 1000);
-                            let activeKey = now;
+                            const now = new Date();
+                            const nowSeconds = Math.floor(now.getTime() / 1000);
+                            let activeKey = nowSeconds;
 
-                            if (tf === '1M') activeKey = Math.floor(now / 60) * 60;
-                            else if (tf === '1H') activeKey = Math.floor(now / 3600) * 3600;
+                            if (tf === '1M') activeKey = Math.floor(nowSeconds / 60) * 60;
+                            else if (tf === '1H') activeKey = Math.floor(nowSeconds / 3600) * 3600;
                             else if (tf === '1D' || tf === '1Mo') {
-                                const d = new Date();
-                                activeKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                activeKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                             }
 
                             if (last.time === activeKey) {
                                 last.close = currentPrice;
                                 last.high = Math.max(last.high, currentPrice);
                                 last.low = Math.min(last.low, currentPrice);
-                            } else if (activeKey > (typeof last.time === 'number' ? last.time : 0)) {
-                                sortedData.push({ time: activeKey, open: last.close, high: Math.max(last.close, currentPrice), low: Math.min(last.close, currentPrice), close: currentPrice });
+                            } else {
+                                // Comparison logic for strings vs numbers
+                                const shouldPush = typeof activeKey === 'string' 
+                                    ? activeKey > last.time 
+                                    : activeKey > last.time;
+
+                                if (shouldPush) {
+                                    sortedData.push({ 
+                                        time: activeKey, 
+                                        open: last.close, 
+                                        high: Math.max(last.close, currentPrice), 
+                                        low: Math.min(last.close, currentPrice), 
+                                        close: currentPrice 
+                                    });
+                                }
                             }
                         }
 
@@ -617,13 +628,8 @@
                     } else {
                         intervalId = setInterval(async () => {
                             try {
-                                const latestData = await fetchRealData(timeframe);
-                                if (!isMounted || latestData.length === 0) return;
-                                const latestCandle = latestData[latestData.length - 1];
-                                if (latestCandle && seriesInstance) {
-                                    seriesInstance.update(latestCandle);
-                                    if (lineSeriesInstance) lineSeriesInstance.update({ time: latestCandle.time, value: latestCandle.close });
-                                }
+                                // Perform a deep reload every 15 seconds to catch new candles (e.g., date rollover)
+                                loadData();
                             } catch (e) { }
                         }, 15000);
                     }
