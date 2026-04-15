@@ -326,7 +326,7 @@
             </div>
         );
 
-        const ChartWidget = ({ ticker }) => {
+        const ChartWidget = ({ ticker, currentPrice }) => {
             const chartContainerRef = useRef();
             const [timeframe, setTimeframe] = useState('1D');
             const [chartType, setChartType] = useState('Candle'); // Added Chart Type state
@@ -572,6 +572,43 @@
 
                 return () => { isMounted = false; if (intervalId) clearInterval(intervalId); };
             }, [timeframe, ticker, seriesInstance, lineSeriesInstance, emaSeriesInstance, chartInstance]);
+
+            // REAL-TIME BROADCAST: Listen to price changes from the main engine and update chart instantly
+            useEffect(() => {
+                if (!seriesInstance || !currentPrice) return;
+                
+                const nowSeconds = Math.floor(Date.now() / 1000);
+                let timeVal = nowSeconds;
+                
+                if (timeframe === '1D' || timeframe === '1Mo') {
+                    const d = new Date(nowSeconds * 1000);
+                    timeVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                } else if (timeframe === '1M' || timeframe === '1H') {
+                    const step = timeframe === '1M' ? 60 : 3600;
+                    timeVal = Math.floor(nowSeconds / step) * step;
+                    // Adjust timezone for intraday if needed (consistent with fetch)
+                    timeVal += 7 * 3600;
+                }
+
+                try {
+                    // Update only if we have a valid price
+                    seriesInstance.update({
+                        time: timeVal,
+                        value: currentPrice, // Automatic high/low/close update by LightweightCharts
+                        // We provide explicit values for better precision in candle mode
+                        open: undefined, // Let it use existing or new
+                        high: currentPrice,
+                        low: currentPrice,
+                        close: currentPrice
+                    });
+                    
+                    if (lineSeriesInstance) {
+                        lineSeriesInstance.update({ time: timeVal, value: currentPrice });
+                    }
+                } catch (e) {
+                    // Silently fail if time scale is not ready
+                }
+            }, [currentPrice, seriesInstance, timeframe, lineSeriesInstance]);
 
             return (
                 <div className="flex flex-col h-full">
@@ -1881,7 +1918,7 @@
                             </div>
                         </div>
                         <div className="p-6 h-[550px]">
-                            <ChartWidget ticker={activeTicker} />
+                            <ChartWidget ticker={activeTicker} currentPrice={stock.ap} />
                         </div>
                     </div>
 
