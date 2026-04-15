@@ -436,51 +436,59 @@
 
                 const fetchRealData = async (tf) => {
                     let interval = '1d'; let range = '1y';
-                    if (tf === '1S' || tf === '1M') { interval = '1m'; range = '5d'; }
-                    else if (tf === '1H') { interval = '1h'; range = '1mo'; }
+                    if (tf === '1S' || tf === '1M') { interval = '1m'; range = '1d'; }
+                    else if (tf === '1H') { interval = '1h'; range = '5d'; }
                     else if (tf === '1D') { interval = '1d'; range = '1y'; }
-                    else if (tf === '1Mo') { interval = '1mo'; range = '5y'; }
+                    else if (tf === '1Mo') { interval = '1mo'; range = '2y'; }
 
                     const actualTicker = ticker === 'IHSG' ? '^JKSE' : `${ticker}.JK`;
                     const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${actualTicker}?interval=${interval}&range=${range}`;
-                    const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}&disableCache=true&_=${Date.now()}`;
 
                     try {
                         const [res, localRes] = await Promise.all([
-                            fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`),
-                            fetch(`market_data.json?_=${Date.now()}`)
+                            fetch(`proxy.php?url=${encodeURIComponent(yfUrl)}&_=${Date.now()}`).catch(e => ({ ok: false })),
+                            fetch(`market_data.json?_=${Date.now()}`).catch(e => ({ ok: false }))
                         ]);
 
-                        if (!res.ok) return [];
-                        const json = await res.json();
                         const localData = localRes.ok ? await localRes.json() : {};
+                        let mapTime = {};
 
-                        if (!json.chart || !json.chart.result || json.chart.result.length === 0) return [];
-                        const result = json.chart.result[0];
-                        const timestamps = result.timestamp || [];
-                        const quote = result.indicators.quote[0];
+                        if (res.ok) {
+                            const json = await res.json();
+                            if (json.chart && json.chart.result && json.chart.result.length > 0) {
+                                const result = json.chart.result[0];
+                                const timestamps = result.timestamp || [];
+                                const quote = result.indicators.quote[0];
 
-                        let formattedData = [];
-                        for (let i = 0; i < timestamps.length; i++) {
-                            if (quote.close[i] !== null) {
-                                let t = timestamps[i];
+                                for (let i = 0; i < timestamps.length; i++) {
+                                    if (quote.close[i] !== null) {
+                                        let t = timestamps[i];
+                                        let timeKey = t;
 
-                                // FORCE QUANTIZATION: Align to timeframe buckets to prevent 'ngawur' gaps
-                                if (timeframe === '1S') t = Math.floor(t);
-                                else if (timeframe === '1M') t = Math.floor(t / 60) * 60;
-                                else if (timeframe === '1H') t = Math.floor(t / 3600) * 3600;
-                                else if (timeframe === '1D' || timeframe === '1Mo') {
-                                    const d = new Date(t * 1000);
-                                    t = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                        if (tf === '1S') timeKey = Math.floor(t);
+                                        else if (tf === '1M') timeKey = Math.floor(t / 60) * 60;
+                                        else if (tf === '1H') timeKey = Math.floor(t / 3600) * 3600;
+                                        else {
+                                            const d = new Date(t * 1000);
+                                            timeKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                        }
+
+                                        mapTime[timeKey] = {
+                                            time: timeKey,
+                                            open: quote.open[i],
+                                            high: quote.high[i],
+                                            low: quote.low[i],
+                                            close: quote.close[i]
+                                        };
+                                    }
                                 }
-                                formattedData.push({ time: t, open: quote.open[i], high: quote.high[i], low: quote.low[i], close: quote.close[i] });
                             }
                         }
 
-                        // HIGH-SPEED SINK: Precise Local Engine Alignment (GROUND TRUTH)
+                        // Local Data Integration (Priority Sync)
                         const localKeys = ticker === 'IHSG' ? ['^JKSE', 'IHSG'] : [`${ticker}.JK`, ticker];
                         localKeys.forEach(k => {
-                            if (localData[k]) {
+                            if (localData[k] && localData[k].close) {
                                 const l = localData[k];
                                 const lTimes = l.timestamp || [];
                                 const lPrices = l.close || [];
@@ -488,18 +496,16 @@
                                 for (let j = 0; j < lTimes.length; j++) {
                                     if (lPrices[j] === null) continue;
                                     let lt = lTimes[j];
-
-                                    if (timeframe === '1S') lt = Math.floor(lt);
-                                    else if (timeframe === '1M') lt = Math.floor(lt / 60) * 60;
-                                    else if (timeframe === '1H') lt = Math.floor(lt / 3600) * 3600;
-
                                     let timeKey = lt;
-                                    if (timeframe === '1D' || timeframe === '1Mo') {
+
+                                    if (tf === '1S') timeKey = Math.floor(lt);
+                                    else if (tf === '1M') timeKey = Math.floor(lt / 60) * 60;
+                                    else if (tf === '1H') timeKey = Math.floor(lt / 3600) * 3600;
+                                    else {
                                         const d = new Date(lt * 1000);
                                         timeKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                     }
 
-                                    // LOCAL DATA OVERWRITE: Local is the source of truth for the user
                                     mapTime[timeKey] = {
                                         time: timeKey,
                                         open: lPrices[j], high: lPrices[j], low: lPrices[j], close: lPrices[j]
@@ -508,76 +514,36 @@
                             }
                         });
 
-                        // PRECISE DATA RECONSTRUCTION (OHLC)
                         const sortedData = Object.values(mapTime).sort((a, b) => {
                             if (typeof a.time === 'string') return a.time.localeCompare(b.time);
                             return a.time - b.time;
                         });
 
-                        // NO-FLAT ALGORITHM: Enforce realistic candle bodies
-                        for (let i = 0; i < sortedData.length; i++) {
-                            const d = sortedData[i];
-                            const prev = i > 0 ? sortedData[i - 1] : null;
-                            if (d.open === d.close && prev) {
-                                d.open = prev.close;
-                                d.high = Math.max(d.open, d.close) * 1.001;
-                                d.low = Math.min(d.open, d.close) * 0.999;
-                            }
-                        }
-
-                        // TEMPORAL LEAP: Inject Today's Live Data if missing or stale
-                        if (currentPrice) {
-                            const now = new Date();
-                            const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                            const todaySeconds = Math.floor(now.setHours(0, 0, 0, 0) / 1000) + 7 * 3600;
-
-                            const step = timeframe === '1M' ? 60 : (timeframe === '1H' ? 3600 : null);
-                            let activeTimeKey;
-                            if (timeframe === '1D' || timeframe === '1Mo') {
-                                activeTimeKey = todayKey;
-                            } else {
-                                activeTimeKey = step ? (Math.floor(Date.now() / 1000 / step) * step + 7 * 3600) : Math.floor(Date.now() / 1000);
-                            }
-
+                        // Ensure latest price is injected as the final point
+                        if (currentPrice && sortedData.length > 0) {
                             const last = sortedData[sortedData.length - 1];
-                            if (!last || last.time !== activeTimeKey) {
-                                sortedData.push({
-                                    time: activeTimeKey,
-                                    open: last ? last.close : currentPrice,
-                                    high: Math.max(last ? last.close : currentPrice, currentPrice),
-                                    low: Math.min(last ? last.close : currentPrice, currentPrice),
-                                    close: currentPrice
-                                });
-                            } else {
+                            const now = Math.floor(Date.now() / 1000);
+                            let activeKey = now;
+
+                            if (tf === '1M') activeKey = Math.floor(now / 60) * 60;
+                            else if (tf === '1H') activeKey = Math.floor(now / 3600) * 3600;
+                            else if (tf === '1D' || tf === '1Mo') {
+                                const d = new Date();
+                                activeKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                            }
+
+                            if (last.time === activeKey) {
                                 last.close = currentPrice;
                                 last.high = Math.max(last.high, currentPrice);
                                 last.low = Math.min(last.low, currentPrice);
+                            } else if (activeKey > (typeof last.time === 'number' ? last.time : 0)) {
+                                sortedData.push({ time: activeKey, open: last.close, high: Math.max(last.close, currentPrice), low: Math.min(last.close, currentPrice), close: currentPrice });
                             }
-                        }
-
-                        // INTELLIGENT EMA CALCULATION (Period: 20)
-                        if (emaSeriesInstance && sortedData.length > 20) {
-                            const emaData = [];
-                            const period = 20;
-                            const k = 2 / (period + 1);
-                            let ema = sortedData[0].close;
-
-                            for (let i = 0; i < sortedData.length; i++) {
-                                ema = (sortedData[i].close * k) + (ema * (1 - k));
-                                if (i >= period) {
-                                    emaData.push({ time: sortedData[i].time, value: ema });
-                                }
-                            }
-                            emaSeriesInstance.setData(emaData);
-                        }
-
-                        if (chartInstance && sortedData.length > 0) {
-                            setTimeout(() => chartInstance.timeScale().fitContent(), 100);
                         }
 
                         return sortedData;
                     } catch (e) {
-                        console.error("Chart Multi-Source Error, initiating fallback:", e);
+                        console.error("Chart Fetch Error:", e);
                         return [];
                     }
                 };
@@ -644,27 +610,10 @@
                     chartInstance.timeScale().setVisibleRange({ from: fromTime, to: toTime });
 
                     if (timeframe === '1S') {
-                        let currentCandle = { ...data[data.length - 1] };
-                        let lastSavedTime = currentCandle.time;
-
-                        intervalId = setInterval(() => {
-                            const nowSeconds = Math.floor(Date.now() / 1000);
-                            const lastIntervalTime = Math.floor(nowSeconds / 60) * 60;
-                            if (lastIntervalTime > lastSavedTime) {
-                                lastSavedTime = lastIntervalTime;
-                                const change = (Math.random() - 0.5) * 5;
-                                const newPrice = currentCandle.close + change;
-                                currentCandle = { time: lastIntervalTime, open: currentCandle.close, high: Math.max(currentCandle.close, newPrice), low: Math.min(currentCandle.close, newPrice), close: newPrice };
-                            } else {
-                                const change = (Math.random() - 0.5) * 5;
-                                const newPrice = currentCandle.close + change;
-                                currentCandle.high = Math.max(currentCandle.high, newPrice);
-                                currentCandle.low = Math.min(currentCandle.low, newPrice);
-                                currentCandle.close = newPrice;
-                            }
-                            if (seriesInstance) seriesInstance.update(currentCandle);
-                            if (lineSeriesInstance) lineSeriesInstance.update({ time: currentCandle.time, value: currentCandle.close });
-                        }, 1000);
+                        // High-Frequency Update Cycle for 1-Second View
+                        intervalId = setInterval(async () => {
+                            loadData(); // Re-sync every cycle to maintain precision
+                        }, 5000); 
                     } else {
                         intervalId = setInterval(async () => {
                             try {
@@ -676,7 +625,7 @@
                                     if (lineSeriesInstance) lineSeriesInstance.update({ time: latestCandle.time, value: latestCandle.close });
                                 }
                             } catch (e) { }
-                        }, 30000);
+                        }, 15000);
                     }
                 };
 
