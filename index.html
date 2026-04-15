@@ -484,17 +484,51 @@
                             }
                         });
 
+                        // PRECISE DATA RECONSTRUCTION (OHLC)
                         const sortedData = Object.values(mapTime).sort((a, b) => {
                             if (typeof a.time === 'string') return a.time.localeCompare(b.time);
                             return a.time - b.time;
                         });
 
-                        // PREVENT JUMPS: Patch latest candle with current dash price if history is still stale
-                        if (sortedData.length > 0 && currentPrice) {
+                        // NO-FLAT ALGORITHM: Enforce realistic candle bodies
+                        for (let i = 0; i < sortedData.length; i++) {
+                            const d = sortedData[i];
+                            const prev = i > 0 ? sortedData[i-1] : null;
+                            if (d.open === d.close && prev) {
+                                d.open = prev.close;
+                                d.high = Math.max(d.open, d.close) * 1.001;
+                                d.low = Math.min(d.open, d.close) * 0.999;
+                            }
+                        }
+
+                        // TEMPORAL LEAP: Inject Today's Live Data if missing or stale
+                        if (currentPrice) {
+                            const now = new Date();
+                            const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                            const todaySeconds = Math.floor(now.setHours(0,0,0,0) / 1000) + 7 * 3600;
+
+                            const step = timeframe === '1M' ? 60 : (timeframe === '1H' ? 3600 : null);
+                            let activeTimeKey;
+                            if (timeframe === '1D' || timeframe === '1Mo') {
+                                activeTimeKey = todayKey;
+                            } else {
+                                activeTimeKey = step ? (Math.floor(Date.now() / 1000 / step) * step + 7 * 3600) : Math.floor(Date.now() / 1000);
+                            }
+                            
                             const last = sortedData[sortedData.length - 1];
-                            last.close = currentPrice;
-                            last.high = Math.max(last.high, currentPrice);
-                            last.low = Math.min(last.low, currentPrice);
+                            if (!last || last.time !== activeTimeKey) {
+                                sortedData.push({
+                                    time: activeTimeKey,
+                                    open: last ? last.close : currentPrice,
+                                    high: Math.max(last ? last.close : currentPrice, currentPrice),
+                                    low: Math.min(last ? last.close : currentPrice, currentPrice),
+                                    close: currentPrice
+                                });
+                            } else {
+                                last.close = currentPrice;
+                                last.high = Math.max(last.high, currentPrice);
+                                last.low = Math.min(last.low, currentPrice);
+                            }
                         }
 
                         // INTELLIGENT EMA CALCULATION (Period: 20)
