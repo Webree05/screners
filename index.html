@@ -2434,29 +2434,68 @@
             const data = useMemo(() => {
                 const quarters = []; const now = new Date(); let seed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
                 const random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-                for (let i = 11; i >= 0; i--) quarters.push({ name: `Q${Math.floor(i / 3) + 1}`, netflow: (random() - 0.5) * 50 });
+                const quarterNames = ['Q1', 'Q2', 'Q3', 'Q4'];
+                // Create exactly 12 bars representing the last 12 operational checkpoints
+                for (let i = 11; i >= 0; i--) {
+                    quarters.push({ 
+                        name: `${quarterNames[Math.floor(i / 3)]} - ${2023 + Math.floor(i/12)}`, 
+                        netflow: (random() - 0.45) * 60 
+                    });
+                }
                 return { quarters };
             }, [ticker]);
+
             return (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="p-8 bg-slate-900/40 rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden relative min-h-[400px]">
-                        <div className="flex justify-around items-end h-[300px] gap-2">
+                    <div className="p-10 bg-slate-950/60 rounded-[3rem] border border-slate-800/50 shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] overflow-hidden relative min-h-[450px] flex flex-col justify-center">
+                        {/* Interactive Zero-Line Baseline */}
+                        <div className="absolute left-0 w-full h-[2px] bg-slate-700/30 z-0 top-1/2 -translate-y-1/2"></div>
+                        <div className="absolute left-8 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-600 uppercase tracking-widest -rotate-90 origin-left opacity-50">Zero Baseline Flow</div>
+
+                        <div className="flex justify-around items-center h-[320px] gap-3 relative z-10">
                             {data.quarters.map((q, i) => (
-                                <div key={i} className="flex flex-col items-center flex-1 group">
-                                    <div className="relative w-full h-full flex flex-col justify-end items-center">
-                                        <div
-                                            className={`w-full rounded-t-lg transition-all duration-1000 hover:brightness-125 ${q.netflow > 0 ? 'bg-gradient-to-t from-success/20 to-success/60' : 'bg-gradient-to-t from-danger/20 to-danger/60'}`}
-                                            style={{ height: `${Math.max(5, Math.abs(q.netflow) * 1.5)}%` }} // Ensure at least 5% visible height
-                                        ></div>
-                                        <div className={`absolute top-0 text-[7px] font-black ${q.netflow > 0 ? 'text-success' : 'text-danger'} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                                            {q.netflow > 0 ? '+' : ''}{q.netflow.toFixed(1)}B
+                                <div key={i} className="flex flex-col items-center flex-1 group h-full justify-center">
+                                    <div className="relative w-full h-full flex flex-col items-center">
+                                        {/* Dynamic Bar Rendering Engine */}
+                                        <div className="flex flex-col w-full h-full">
+                                            {/* POSITIVE FLOW (Above Line) */}
+                                            <div className="flex-1 flex flex-col justify-end items-center relative">
+                                                {q.netflow > 0 && (
+                                                    <React.Fragment>
+                                                        <div className="absolute bottom-full mb-2 text-[9px] font-black text-success opacity-0 group-hover:opacity-100 transition-all transform group-hover:-translate-y-1">
+                                                            +{q.netflow.toFixed(1)}B
+                                                        </div>
+                                                        <div 
+                                                            className="w-full max-w-[24px] rounded-t-lg bg-gradient-to-t from-success/40 to-success shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all duration-700 group-hover:scale-x-110 group-hover:brightness-125"
+                                                            style={{ height: `${Math.min(100, q.netflow * 2.5)}%` }}
+                                                        ></div>
+                                                    </React.Fragment>
+                                                )}
+                                            </div>
+                                            {/* NEGATIVE FLOW (Below Line) */}
+                                            <div className="flex-1 flex flex-col justify-start items-center relative pt-[2px]">
+                                                {q.netflow <= 0 && (
+                                                    <React.Fragment>
+                                                        <div 
+                                                            className="w-full max-w-[24px] rounded-b-lg bg-gradient-to-b from-danger/40 to-danger shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-all duration-700 group-hover:scale-x-110 group-hover:brightness-125"
+                                                            style={{ height: `${Math.min(100, Math.abs(q.netflow) * 2.5)}%` }}
+                                                        ></div>
+                                                        <div className="absolute top-full mt-2 text-[9px] font-black text-danger opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-y-1">
+                                                            {q.netflow.toFixed(1)}B
+                                                        </div>
+                                                    </React.Fragment>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    <span className="text-[8px] text-slate-600 mt-4 font-black">{q.name}</span>
+                                    <span className="text-[9px] text-slate-500 mt-6 font-black uppercase tracking-tighter group-hover:text-primary transition-colors whitespace-nowrap">{q.name}</span>
                                 </div>
                             ))}
                         </div>
-                        <div className="absolute bottom-16 left-0 w-full h-[1px] bg-slate-700/50"></div>
+                        
+                        {/* Grid Lines for Depth */}
+                        <div className="absolute inset-x-0 top-[25%] h-[1px] bg-slate-800/20 border-t border-dashed border-slate-700/10 pointer-events-none"></div>
+                        <div className="absolute inset-x-0 top-[75%] h-[1px] bg-slate-800/20 border-t border-dashed border-slate-700/10 pointer-events-none"></div>
                     </div>
                 </div>
             );
