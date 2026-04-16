@@ -614,7 +614,7 @@
                     const ticker = document.getElementById('ticker-search').value.trim().toUpperCase();
                     if (ticker) {
                         try {
-                            const aiRes = await fetch(`http://localhost:8000/api/v1/signals/${ticker}`).catch(() => null);
+                            const aiRes = await fetch(`/api/v1/signals/${ticker}`).catch(() => null);
                             if (aiRes && aiRes.ok) {
                                 const aiData = await aiRes.json();
                                 const aiInfo = document.getElementById('aiInfo');
